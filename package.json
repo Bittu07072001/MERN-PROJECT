@@ -1,0 +1,14 @@
+{
+  "name": "homeconnect-mern",
+  "version": "2.2.0",
+  "description": "Full-Stack MERN E-Commerce \u2014 OTP Auth, 2FA, Socket.io, Razorpay, Admin/Seller/Customer roles",
+  "private": true,
+  "scripts": {
+    "dev": "concurrently \"npm run dev --prefix backend\" \"npm run dev --prefix frontend\"",
+    "start": "npm run start --prefix backend",
+    "install:all": "npm install && npm install --prefix backend && npm install --prefix frontend"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}
