@@ -12,6 +12,7 @@ import useAuthStore from '../../context/authStore';
 import PropertyChat from '../ai/PropertyChat';
 import CompareBar from '../common/CompareBar';
 import JoinLatestMeetingButton from '../common/JoinLatestMeetingButton';
+import AtsReportButton from '../common/AtsReportButton';
 import { useThemeStore, useNotifStore, useCartStore, useWishlistStore } from '../../context/stores';
 
 export default function CustomerLayout() {
@@ -214,6 +215,13 @@ export default function CustomerLayout() {
               {user && (
                 <>
                   {user.role === 'customer' && (
+                    <AtsReportButton
+                      user={user}
+                      className="hidden xl:inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl text-sm font-semibold text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-900/20 hover:bg-indigo-100 dark:hover:bg-indigo-900/30 transition-all active:scale-95"
+                    />
+                  )}
+
+                  {user.role === 'customer' && (
                     <JoinLatestMeetingButton compact className="hidden sm:inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold text-white bg-emerald-600 hover:bg-emerald-700 shadow-md shadow-emerald-500/20 transition-all active:scale-95" />
                   )}
 
@@ -296,7 +304,12 @@ export default function CustomerLayout() {
                             ))}
                           </div>
                           {user.role === 'customer' && (
-                            <div className="px-2 pb-1">
+                            <div className="px-2 pb-1 space-y-1">
+                              <AtsReportButton
+                                user={user}
+                                onClick={() => setUserDropdown(false)}
+                                className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-900/20 hover:bg-indigo-100 dark:hover:bg-indigo-900/30 transition-colors"
+                              />
                               <JoinLatestMeetingButton
                                 onClick={() => setUserDropdown(false)}
                                 className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold text-white bg-emerald-600 hover:bg-emerald-700 transition-colors"
@@ -381,10 +394,17 @@ export default function CustomerLayout() {
                     </Link>
                   )}
                   {user?.role === 'customer' && (
-                    <JoinLatestMeetingButton
-                      onClick={() => setMenuOpen(false)}
-                      className="flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-semibold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-900/20 hover:bg-emerald-100 dark:hover:bg-emerald-900/30 transition-all"
-                    />
+                    <>
+                      <AtsReportButton
+                        user={user}
+                        onClick={() => setMenuOpen(false)}
+                        className="flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-semibold text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-900/20 hover:bg-indigo-100 dark:hover:bg-indigo-900/30 transition-all"
+                      />
+                      <JoinLatestMeetingButton
+                        onClick={() => setMenuOpen(false)}
+                        className="flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-semibold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-900/20 hover:bg-emerald-100 dark:hover:bg-emerald-900/30 transition-all"
+                      />
+                    </>
                   )}
                 </div>
               </motion.div>

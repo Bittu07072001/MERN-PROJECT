@@ -9,6 +9,7 @@ import toast from 'react-hot-toast';
 import { io as socketIO } from 'socket.io-client';
 import useAuthStore from '../../context/authStore';
 import { useThemeStore, useAdminLiveStore } from '../../context/stores';
+import AdminAtsReportButton from '../common/AdminAtsReportButton';
 
 export default function AdminLayout() {
   const { user, logout } = useAuthStore();
@@ -156,6 +157,11 @@ export default function AdminLayout() {
       {/* Nav Items */}
       <nav className="flex-1 p-3 space-y-0.5 overflow-y-auto">
         <div className="text-[10px] font-bold text-gray-400 dark:text-gray-600 uppercase tracking-wider px-3.5 py-2 mt-1">Management</div>
+        <AdminAtsReportButton
+          user={user}
+          onClick={() => setOpen(false)}
+          className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-semibold text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-900/20 hover:bg-indigo-100 dark:hover:bg-indigo-900/30 transition-all duration-200"
+        />
         {NAV.map(item => <NavItem key={item.to} item={item} />)}
       </nav>
 

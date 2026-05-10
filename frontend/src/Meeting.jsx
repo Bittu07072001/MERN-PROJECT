@@ -208,12 +208,63 @@ function WaitingRoom({ room, audience, user, approverLabel, onApproved }) {
 
 function DirectMeetingAccess({ room, audience, user, secureMeetingUrl, reason = 'buyer' }) {
   const isSecurityFallback = reason === 'security';
+  const canApproveRequests =
+    (audience === 'buyer-seller' && user?.role === 'seller') ||
+    (audience === 'admin-seller' && user?.role === 'admin') ||
+    (audience === 'all' && user?.role === 'admin');
+  const requesterLabel =
+    audience === 'buyer-seller' ? 'buyer' :
+    audience === 'admin-seller' ? 'seller' :
+    'participant';
 
   const copyLink = async () => {
     try {
       await navigator.clipboard.writeText(secureMeetingUrl);
     } catch {}
   };
+
+  if (canApproveRequests) {
+    return (
+      <div className="h-screen overflow-hidden bg-gray-950 text-white flex flex-col">
+        <MeetingHeader room={room} audience={audience} user={user} />
+        <ApprovalPanel room={room} requesterLabel={requesterLabel} />
+        <main className="flex-1 min-h-0 grid lg:grid-cols-[360px_1fr] bg-gray-950">
+          <section className="border-r border-white/10 p-5 overflow-y-auto bg-gray-900">
+            <div className="w-12 h-12 rounded-2xl bg-primary-500/10 flex items-center justify-center mb-4">
+              <Video className="w-6 h-6 text-primary-300" />
+            </div>
+            <h2 className="text-lg font-black">Meeting control room</h2>
+            <p className="text-sm text-gray-300 mt-3 leading-6">
+              Keep this screen open to approve waiting {requesterLabel}s. The video meeting runs on the right, and approved participants will join automatically.
+            </p>
+            <a
+              href={secureMeetingUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="mt-5 inline-flex w-full items-center justify-center gap-2 bg-primary-600 hover:bg-primary-700 text-white font-semibold px-5 py-3 rounded-xl transition-all active:scale-95">
+              <ExternalLink className="w-4 h-4" />
+              Open in New Tab
+            </a>
+            <button
+              type="button"
+              onClick={copyLink}
+              className="mt-3 w-full text-xs font-semibold text-gray-400 hover:text-white transition-colors">
+              Copy meeting link
+            </button>
+            <p className="text-xs text-gray-500 mt-4 break-all">{secureMeetingUrl}</p>
+          </section>
+          <section className="min-h-0 bg-black">
+            <iframe
+              title={`${room} video meeting`}
+              src={secureMeetingUrl}
+              allow="camera; microphone; fullscreen; display-capture; autoplay; clipboard-write"
+              className="w-full h-full border-0"
+            />
+          </section>
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div className="h-screen overflow-hidden bg-gray-950 text-white flex flex-col">

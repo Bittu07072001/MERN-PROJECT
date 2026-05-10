@@ -6,6 +6,7 @@ import toast from 'react-hot-toast';
 import useAuthStore from '../../context/authStore';
 import { useThemeStore } from '../../context/stores';
 import JoinLatestMeetingButton from '../common/JoinLatestMeetingButton';
+import SellerAtsReportButton from '../common/SellerAtsReportButton';
 
 const NAV = [
   { to: '/seller',              icon: <LayoutDashboard className="w-4.5 h-4.5" />, label: 'Dashboard',     color: 'text-blue-500' },
@@ -60,6 +61,11 @@ export default function SellerLayout() {
       {/* Nav */}
       <nav className="flex-1 p-3 space-y-0.5 overflow-y-auto">
         <div className="text-[10px] font-bold text-gray-400 dark:text-gray-600 uppercase tracking-wider px-3.5 py-2 mt-1">Seller Tools</div>
+        <SellerAtsReportButton
+          user={user}
+          onClick={() => setOpen(false)}
+          className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-semibold text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-900/20 hover:bg-indigo-100 dark:hover:bg-indigo-900/30 transition-all duration-200"
+        />
         {NAV.map(item => <NavItem key={item.to} item={item} />)}
       </nav>
 
@@ -138,6 +144,10 @@ export default function SellerLayout() {
             </div>
           </div>
           <div className="hidden sm:flex items-center gap-2">
+            <SellerAtsReportButton
+              user={user}
+              className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-xl bg-indigo-50 text-indigo-700 dark:bg-indigo-900/20 dark:text-indigo-300 font-semibold text-xs hover:bg-indigo-100 dark:hover:bg-indigo-900/30 transition-all active:scale-95"
+            />
             <JoinLatestMeetingButton compact className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-xl bg-emerald-600 text-white font-semibold text-xs shadow-md hover:bg-emerald-700 transition-all active:scale-95" />
             <Link to="/seller/products/add"
               className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-xl bg-gradient-to-r from-violet-600 to-purple-500 text-white font-semibold text-xs shadow-md hover:shadow-lg transition-all active:scale-95">
