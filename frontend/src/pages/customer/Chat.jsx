@@ -21,6 +21,7 @@ export default function Chat() {
   const { receiverId } = useParams();
   const navigate = useNavigate();
   const { user } = useAuthStore();
+  const chatBasePath = user?.role === 'admin' ? '/admin/chat' : user?.role === 'seller' ? '/seller/chat' : '/chat';
 
   const [conversations, setConversations] = useState([]);
   const [messages, setMessages] = useState([]);
@@ -178,7 +179,7 @@ export default function Chat() {
               const isOnline = other && onlineUsers.has(other._id?.toString());
               const isActive = receiverId === other?._id;
               return (
-                <button key={c._id} onClick={() => navigate(`/chat/${other?._id}`)}
+                <button key={c._id} onClick={() => navigate(`${chatBasePath}/${other?._id}`)}
                   className={`w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors text-left ${isActive ? 'bg-indigo-50 dark:bg-indigo-950/30' : ''}`}>
                   <div className="relative flex-shrink-0">
                     <div className="w-10 h-10 bg-indigo-100 dark:bg-indigo-900 rounded-full flex items-center justify-center font-bold text-indigo-600 dark:text-indigo-400">
@@ -210,7 +211,7 @@ export default function Chat() {
         <div className="flex-1 flex flex-col min-w-0">
           {/* Header */}
           <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
-            <button onClick={() => navigate('/chat')} className="md:hidden p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800">
+            <button onClick={() => navigate(chatBasePath)} className="md:hidden p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800">
               <ArrowLeft className="w-4 h-4" />
             </button>
             <div className="relative">

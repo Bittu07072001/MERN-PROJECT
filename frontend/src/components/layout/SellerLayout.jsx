@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Package, ShoppingBag, BarChart2, Plus, Menu, LogOut, Sun, Moon, ChevronRight } from 'lucide-react';
+import { LayoutDashboard, Package, ShoppingBag, BarChart2, Plus, Menu, LogOut, Sun, Moon, ChevronRight, MessageCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
 import useAuthStore from '../../context/authStore';
@@ -144,6 +144,9 @@ export default function SellerLayout() {
             </div>
           </div>
           <div className="hidden sm:flex items-center gap-2">
+            <Link to="/seller/chat" className="icon-btn" title="Messages">
+              <MessageCircle className="w-4.5 h-4.5" />
+            </Link>
             <SellerAtsReportButton
               user={user}
               className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-xl bg-indigo-50 text-indigo-700 dark:bg-indigo-900/20 dark:text-indigo-300 font-semibold text-xs hover:bg-indigo-100 dark:hover:bg-indigo-900/30 transition-all active:scale-95"

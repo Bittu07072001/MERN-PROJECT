@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard, Users, ShoppingBag, Package, Tag,
-  CalendarCheck, Menu, LogOut, Sun, Moon, Sparkles, ChevronRight, BarChart3, Store, ShieldCheck, Video
+  CalendarCheck, Menu, LogOut, Sun, Moon, Sparkles, ChevronRight, BarChart3, Store, ShieldCheck, Video, MessageCircle
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
@@ -264,6 +264,9 @@ export default function AdminLayout() {
             )}
           </div>
           <div className="flex items-center gap-2">
+            <Link to="/admin/chat" className="icon-btn" title="Messages">
+              <MessageCircle className="w-4.5 h-4.5" />
+            </Link>
             <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-gray-100 dark:bg-gray-800/60">
               <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
               <span className="text-[11px] font-medium text-gray-600 dark:text-gray-400">Live</span>

@@ -171,6 +171,8 @@ export default function App() {
         {/* Admin */}
         <Route path="/admin" element={<ProtectedRoute allowedRoles={['admin']}><AdminLayout /></ProtectedRoute>}>
           <Route index            element={<AdminDashboard />} />
+          <Route path="chat"      element={<Chat />} />
+          <Route path="chat/:receiverId" element={<Chat />} />
           <Route path="overview"  element={<AdminOverview />} />
           <Route path="users"     element={<AdminUsers fixedRole="customer" title="Buyers" />} />
           <Route path="admins"    element={<AdminUsers fixedRole="admin" title="Admin" />} />
@@ -186,6 +188,8 @@ export default function App() {
         {/* Seller */}
         <Route path="/seller" element={<ProtectedRoute allowedRoles={['seller','admin']}><SellerLayout /></ProtectedRoute>}>
           <Route index                    element={<SellerDashboard />} />
+          <Route path="chat"              element={<Chat />} />
+          <Route path="chat/:receiverId"  element={<Chat />} />
           <Route path="products"          element={<SellerProducts />} />
           <Route path="products/add"      element={<AddProduct />} />
           <Route path="products/edit/:id" element={<EditProduct />} />
