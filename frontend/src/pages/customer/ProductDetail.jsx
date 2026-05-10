@@ -666,7 +666,7 @@ export default function ProductDetail() {
             <h2 className="text-xl font-black text-gray-900 dark:text-white mb-4 flex items-center gap-2">
               <span>📍</span> Property Location
             </h2>
-            <MapView address={address} propertyName={product.name} className="shadow-sm" />
+            <MapView address={address} location={product.location} propertyName={product.name} className="shadow-sm" />
           </div>
         );
       })()}

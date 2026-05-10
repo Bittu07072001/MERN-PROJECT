@@ -12,7 +12,13 @@ const productSchema = new mongoose.Schema({
   subcategory:      String,
   brand:            String,
   location: {
+    address: { type: String, trim: true },
     city: { type: String, trim: true },
+    state: { type: String, trim: true },
+    pincode: { type: String, trim: true },
+    lat: { type: Number },
+    lng: { type: Number },
+    placeId: { type: String, trim: true },
   },
   seller: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   images: [{ url: String, publicId: String }],
@@ -43,6 +49,7 @@ productSchema.index({ name: 'text', description: 'text', tags: 'text', brand: 't
 productSchema.index({ category: 1, price: 1 });
 productSchema.index({ seller: 1 });
 productSchema.index({ 'location.city': 1 });
+productSchema.index({ 'location.lat': 1, 'location.lng': 1 });
 
 productSchema.pre('save', function (next) {
   if (this.isModified('name') && !this.slug) {

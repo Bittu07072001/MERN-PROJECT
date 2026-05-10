@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Upload, Plus, X, Video, Link as LinkIcon, Play, Film, Loader2 } from 'lucide-react';
+import { Upload, Plus, X, Video, Link as LinkIcon, Play, Film, Loader2, LocateFixed } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../../utils/api';
 
@@ -16,7 +16,7 @@ const CITIES = [
 const EMPTY_FORM = {
   name:'', description:'', shortDescription:'', price:'', discountPrice:'',
   category:'', subcategory:'', brand:'', stock:'', unit:'sq ft',
-  location:{ city:'' },
+  location:{ address:'', city:'', state:'', pincode:'', lat:'', lng:'' },
   isFeatured:false, isTrending:false, isActive:true,
   images:[], videos:[], tags:'', attributes:[],
   shippingInfo:{ freeShipping:false, shippingCost:'', deliveryDays:'' },
@@ -84,6 +84,26 @@ export default function ProductForm({ initial, onSubmit, loading, submitLabel = 
   const set        = (k, v) => setForm(f => ({ ...f, [k]: v }));
   const setLocation = (k, v) => setForm(f => ({ ...f, location: { ...(f.location || {}), [k]: v } }));
   const setShipping = (k, v) => setForm(f => ({ ...f, shippingInfo: { ...f.shippingInfo, [k]: v } }));
+
+  const useCurrentLocation = () => {
+    if (!navigator.geolocation) return toast.error('Geolocation is not available in this browser');
+
+    navigator.geolocation.getCurrentPosition(
+      ({ coords }) => {
+        setForm(f => ({
+          ...f,
+          location: {
+            ...(f.location || {}),
+            lat: coords.latitude.toFixed(6),
+            lng: coords.longitude.toFixed(6),
+          },
+        }));
+        toast.success('Current coordinates added');
+      },
+      () => toast.error('Could not get your current location'),
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
+  };
 
   const addAttr    = () => setForm(f => ({ ...f, attributes: [...(f.attributes||[]), { key:'', value:'' }] }));
   const removeAttr = (i) => setForm(f => ({ ...f, attributes: f.attributes.filter((_,idx) => idx !== i) }));
@@ -176,12 +196,17 @@ export default function ProductForm({ initial, onSubmit, loading, submitLabel = 
       setUploading(false);
     }
 
+    const lat = form.location?.lat;
+    const lng = form.location?.lng;
+
     onSubmit({
       ...form,
       images:        finalImages,
       location:      {
         ...(typeof form.location === 'object' ? form.location : {}),
         city: form.location?.city || '',
+        lat: lat === '' || lat == null ? undefined : Number(lat),
+        lng: lng === '' || lng == null ? undefined : Number(lng),
       },
       price:         Number(form.price),
       discountPrice: Number(form.discountPrice) || 0,
@@ -229,12 +254,39 @@ export default function ProductForm({ initial, onSubmit, loading, submitLabel = 
             <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1.5">Subcategory</label>
             <input value={form.subcategory} onChange={e=>set('subcategory',e.target.value)} placeholder="e.g. Luxury, Affordable, Ready-to-Move" className="input text-sm" />
           </div>
+          <div className="sm:col-span-2">
+            <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1.5">Full Address</label>
+            <input value={form.location?.address || ''} onChange={e=>setLocation('address', e.target.value)} placeholder="Building, street, locality" className="input text-sm" />
+          </div>
           <div>
             <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1.5">City <span className="text-red-500">*</span></label>
             <select value={form.location?.city || ''} onChange={e=>setLocation('city', e.target.value)} className="input text-sm">
               <option value="">Select city</option>
               {CITIES.map(city => <option key={city} value={city}>{city}</option>)}
             </select>
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1.5">State</label>
+            <input value={form.location?.state || ''} onChange={e=>setLocation('state', e.target.value)} placeholder="e.g. Maharashtra" className="input text-sm" />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1.5">Pincode</label>
+            <input value={form.location?.pincode || ''} onChange={e=>setLocation('pincode', e.target.value)} placeholder="e.g. 400050" className="input text-sm" />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1.5">Map Coordinates</label>
+            <div className="grid grid-cols-[1fr_1fr_auto] gap-2">
+              <input type="number" step="any" value={form.location?.lat || ''} onChange={e=>setLocation('lat', e.target.value)} placeholder="Lat" className="input text-sm min-w-0" />
+              <input type="number" step="any" value={form.location?.lng || ''} onChange={e=>setLocation('lng', e.target.value)} placeholder="Lng" className="input text-sm min-w-0" />
+              <button
+                type="button"
+                onClick={useCurrentLocation}
+                title="Use current location"
+                className="inline-flex items-center justify-center w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 transition-colors"
+              >
+                <LocateFixed className="w-4 h-4" />
+              </button>
+            </div>
           </div>
           <div>
             <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1.5">Brand</label>
