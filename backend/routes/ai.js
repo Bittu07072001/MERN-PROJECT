@@ -8,6 +8,75 @@ const Product = require('../models/Product');
 const GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions';
 const GROQ_MODEL = 'llama-3.3-70b-versatile';
 
+function formatINR(value) {
+  const n = Number(value || 0);
+  if (n >= 10000000) return `Rs ${(n / 10000000).toFixed(n % 10000000 ? 1 : 0)} Cr`;
+  if (n >= 100000) return `Rs ${(n / 100000).toFixed(n % 100000 ? 1 : 0)} Lakh`;
+  return `Rs ${n.toLocaleString('en-IN')}`;
+}
+
+async function getPlatformSnapshot() {
+  const baseMatch = { isActive: true, approvalStatus: 'approved' };
+  const [summary] = await Product.aggregate([
+    { $match: baseMatch },
+    {
+      $facet: {
+        totals: [
+          {
+            $group: {
+              _id: null,
+              count: { $sum: 1 },
+              minPrice: { $min: { $cond: [{ $gt: ['$discountPrice', 0] }, '$discountPrice', '$price'] } },
+              maxPrice: { $max: { $cond: [{ $gt: ['$discountPrice', 0] }, '$discountPrice', '$price'] } },
+              avgPrice: { $avg: { $cond: [{ $gt: ['$discountPrice', 0] }, '$discountPrice', '$price'] } },
+            },
+          },
+        ],
+        categories: [
+          { $group: { _id: '$category', count: { $sum: 1 } } },
+          { $sort: { count: -1 } },
+          { $limit: 8 },
+        ],
+        cities: [
+          { $match: { 'location.city': { $nin: [null, ''] } } },
+          { $group: { _id: '$location.city', count: { $sum: 1 } } },
+          { $sort: { count: -1 } },
+          { $limit: 8 },
+        ],
+      },
+    },
+  ]);
+
+  const topProperties = await Product.find(baseMatch)
+    .sort('-isFeatured -isTrending -ratings.average -viewCount -createdAt')
+    .limit(6)
+    .select('name category price discountPrice location.city ratings viewCount brand attributes tags')
+    .lean();
+
+  const totals = summary?.totals?.[0] || {};
+  return {
+    listingCount: totals.count || 0,
+    minPrice: totals.minPrice || 0,
+    maxPrice: totals.maxPrice || 0,
+    avgPrice: Math.round(totals.avgPrice || 0),
+    categories: (summary?.categories || []).map(c => `${c._id || 'Other'} (${c.count})`),
+    cities: (summary?.cities || []).map(c => `${c._id} (${c.count})`),
+    topProperties: topProperties.map(p => ({
+      name: p.name,
+      category: p.category,
+      city: p.location?.city || 'India',
+      price: formatINR(p.discountPrice > 0 ? p.discountPrice : p.price),
+      rating: p.ratings?.average || 0,
+      views: p.viewCount || 0,
+      highlights: [
+        p.brand,
+        ...(p.attributes || []).slice(0, 2).map(a => `${a.key}: ${a.value}`),
+        ...(p.tags || []).slice(0, 2),
+      ].filter(Boolean),
+    })),
+  };
+}
+
 async function callGroq(messages, options = {}) {
   const start = Date.now();
   const apiKey = process.env.GROQ_API_KEY;
@@ -68,8 +137,20 @@ ${propertyContext ? `Current Property Context:
 
 Keep responses concise, helpful, and use ₹ for prices. Format numbers in Indian system (Lakh, Crore). Be friendly and professional. If asked about specific properties not in context, suggest browsing the HomeConnect listings.`;
 
+    const platform = await getPlatformSnapshot().catch(() => null);
+    const platformPrompt = platform ? `
+
+Live HomeConnect platform context:
+- Approved listings: ${platform.listingCount}
+- Price range: ${formatINR(platform.minPrice)} to ${formatINR(platform.maxPrice)}; average ${formatINR(platform.avgPrice)}
+- Categories: ${platform.categories.join(', ') || 'Not available'}
+- Active cities: ${platform.cities.join(', ') || 'Not available'}
+- Notable listings: ${platform.topProperties.map(p => `${p.name} (${p.category}, ${p.city}, ${p.price}${p.highlights.length ? `, ${p.highlights.join(', ')}` : ''})`).join(' | ') || 'Not available'}
+
+Use the live HomeConnect context above when recommending properties. If a user asks for matches, mention 1-3 suitable listings from this context when possible. Do not invent exact legal or tax figures; give typical ranges and ask the user to verify with a bank, lawyer, builder, or local authority. End with one practical next step when useful.` : '';
+
     const messages = [
-      { role: 'system', content: systemPrompt },
+      { role: 'system', content: `${systemPrompt}${platformPrompt}` },
       ...conversationHistory.slice(-10).map(m => ({ role: m.role, content: m.content })),
       { role: 'user', content: message },
     ];

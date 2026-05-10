@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   MessageCircle, X, Send, Sparkles, ExternalLink, Bot, RefreshCw,
   Mic, MicOff, Calculator, CalendarCheck, Heart, GitCompare, MapPin,
+  BarChart3, FileText, ShieldCheck, Landmark, TrendingUp, Building2,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../../utils/api';
@@ -13,7 +14,7 @@ import { useWishlistStore, useCompareStore } from '../../context/stores';
 const INITIAL_MSG = {
   id: 0, role: 'bot',
   text: `Hi! 👋 I'm **HomeBot** — your AI real estate assistant powered by Groq AI.\n\nAsk me anything about properties, EMI calculations, investments, or booking a visit!`,
-  chips: ['Search 2BHK under 50 lakh', 'EMI calculator', 'Compare properties', 'Book a visit'],
+  chips: ['Search 2BHK under 50 lakh', 'EMI calculator', 'Market snapshot', 'Buyer checklist', 'Stamp duty help', 'Book a visit'],
 };
 
 const CHAT_STORAGE_KEY = 'homebotChatHistory';
@@ -32,7 +33,7 @@ const parseBudget = (text) => {
 };
 
 const parseCity = (text) => {
-  const cities = ['Mumbai', 'Delhi', 'Bangalore', 'Pune', 'Hyderabad', 'Chennai', 'Gurgaon', 'Noida', 'Thane', 'Navi Mumbai'];
+  const cities = ['Mumbai', 'Delhi', 'Bangalore', 'Bengaluru', 'Pune', 'Hyderabad', 'Chennai', 'Gurgaon', 'Gurugram', 'Noida', 'Thane', 'Navi Mumbai', 'Kolkata', 'Ahmedabad', 'Jaipur', 'Lucknow', 'Kochi', 'Lonavala'];
   return cities.find(city => new RegExp(`\\b${city}\\b`, 'i').test(text));
 };
 
@@ -83,16 +84,26 @@ function getFallbackResponse(msg, property) {
   if (/book|visit|schedule/.test(m)) {
     return `**Schedule a Visit**\n\n1. Open any property page\n2. Click "Schedule a Visit"\n3. Choose Site Visit or Video Call\n4. Pick your date & time\n5. Confirm — done!`;
   }
-  return `I'm here to help with real estate queries! Ask about EMI, investments, property details, or booking visits.`;
+  if (/document|legal|rera|checklist/.test(m)) {
+    return `**Buyer Checklist**\n\nCheck RERA registration, title chain, encumbrance certificate, approved building plan, occupancy/completion certificate, tax receipts, society NOC, and sale agreement terms before payment.`;
+  }
+  if (/stamp|registration|tax|charges/.test(m)) {
+    return `**Buying Cost Guide**\n\nBudget for stamp duty, registration fees, GST if applicable, legal verification, loan processing, brokerage, maintenance deposit, and moving costs. Exact charges vary by state and property type.`;
+  }
+  if (/investment|roi|yield|rental/.test(m)) {
+    return `**Investment Lens**\n\nCompare location growth, rental demand, infrastructure projects, price per sq ft, builder reputation, maintenance cost, vacancy risk, and exit liquidity.`;
+  }
+  return `I'm here to help with real estate queries! Ask about property search, EMI, investment score, documents, stamp duty, location insights, comparison, seller contact, or booking visits.`;
 }
 
 function getChips(msg, property) {
   const m = msg.toLowerCase();
-  if (/emi|loan|mortgage/.test(m)) return ['Search properties', 'Open price estimator', 'Show recommendations'];
-  if (/compare/.test(m)) return ['Open compare page', 'Search properties', 'Investment tips'];
-  if (/location|area|locality|nearby/.test(m)) return ['Location insights', 'Search in Mumbai', 'Search in Bangalore'];
-  if (!property) return ['Search properties', 'EMI calculator', 'Show recommendations', 'Location insights'];
-  return ["Calculate EMI", 'Save to wishlist', 'Compare this property', 'Book a visit'];
+  if (/emi|loan|mortgage/.test(m)) return ['Loan eligibility', 'Open price estimator', 'Search properties', 'Stamp duty help'];
+  if (/compare/.test(m)) return ['Open compare page', 'Market snapshot', 'Investment tips', 'Search properties'];
+  if (/location|area|locality|nearby/.test(m)) return ['Location insights', 'Search in Mumbai', 'Search in Bangalore', 'Market snapshot'];
+  if (/legal|document|rera|checklist/.test(m)) return ['Stamp duty help', 'Book a visit', 'Search verified listings'];
+  if (!property) return ['Search properties', 'EMI calculator', 'AI recommendations', 'Market snapshot', 'Buyer checklist', 'Seller guide'];
+  return ["Calculate EMI", 'Save to wishlist', 'Compare this property', 'Book a visit', 'Chat with seller'];
 }
 
 export default function PropertyChat() {
@@ -219,6 +230,77 @@ export default function PropertyChat() {
     });
   };
 
+  const showMarketSnapshot = async () => {
+    const [{ data: productsRes }, { data: categoriesRes }] = await Promise.all([
+      api.get('/products?limit=4&sort=-viewCount'),
+      api.get('/products/categories'),
+    ]);
+    const products = productsRes.products || [];
+    const categories = categoriesRes.categories || [];
+    const cards = products.map(p => ({ type: 'property', property: p }));
+    const categoryText = categories.slice(0, 5).map(c => `${c._id || 'Other'} (${c.count})`).join(', ') || 'categories are loading';
+    addBotMessage(
+      `**HomeConnect Market Snapshot**\n\nApproved listings available now: **${productsRes.total || products.length}**\nTop categories: ${categoryText}\n\nThese are some high-interest listings from the platform right now.`,
+      {
+        cards,
+        actions: [
+          { label: 'Open all properties', to: '/products' },
+          { label: 'Open analytics', to: '/analytics' },
+        ],
+        chips: ['AI recommendations', 'Investment tips', 'Search in Mumbai', 'Compare properties'],
+      }
+    );
+  };
+
+  const showBuyerChecklist = () => {
+    addBotMessage(
+      `**Strong Buyer Checklist**\n\n1. Shortlist by budget, city, property type, and commute.\n2. Verify RERA, title chain, encumbrance certificate, approved plan, tax receipts, and OC/CC.\n3. Compare effective price: base price + stamp duty + registration + GST if applicable + maintenance + parking.\n4. Calculate EMI with down payment and emergency buffer.\n5. Book a site visit/video call before final negotiation.`,
+      {
+        actions: [
+          { label: 'Browse verified listings', to: '/products' },
+          { label: 'Open price estimator', to: '/price-estimator' },
+        ],
+        chips: ['Stamp duty help', 'Loan eligibility', 'Book a visit', 'Compare properties'],
+      }
+    );
+  };
+
+  const showCostGuide = (msg) => {
+    const city = parseCity(msg) || 'your city';
+    addBotMessage(
+      `**Stamp Duty & Extra Cost Guide**\n\nFor ${city}, budget beyond the property price for:\n- Stamp duty and registration charges\n- GST for under-construction properties, if applicable\n- Legal/title verification\n- Loan processing and valuation charges\n- Brokerage, maintenance deposit, parking, and moving costs\n\nExact stamp duty differs by state, buyer profile, and property type, so verify before payment.`,
+      {
+        actions: [{ label: 'Open price estimator', to: '/price-estimator' }],
+        chips: ['Buyer checklist', 'EMI calculator', 'Search properties'],
+      }
+    );
+  };
+
+  const showLoanEligibility = (msg) => {
+    const e = parseEmi(msg, property);
+    const monthlyIncome = Math.round(e.emi / 0.45);
+    addBotMessage(
+      `**Loan Eligibility Quick Check**\n\nEstimated EMI: **${toCurrency(e.emi)}/month**\nA common comfort rule is EMI <= 40-45% of monthly net income.\nSuggested monthly income for this EMI: **${toCurrency(monthlyIncome)}+**\n\nBanks will also check credit score, existing EMIs, age, job/business stability, property documents, and LTV ratio.`,
+      {
+        actions: [{ label: 'Open price estimator', to: '/price-estimator' }],
+        chips: ['Stamp duty help', 'Search properties', 'Book a visit'],
+      }
+    );
+  };
+
+  const showSellerGuide = () => {
+    addBotMessage(
+      `**Seller Guide**\n\nCreate a complete listing with clear photos, video tour, exact address/city, carpet area, possession status, amenities, pricing, and documents. Faster responses to buyer chats and visit requests usually improve conversions.`,
+      {
+        actions: [
+          { label: 'Seller dashboard', to: '/seller/products' },
+          { label: 'Properties', to: '/products' },
+        ],
+        chips: ['Market snapshot', 'Pricing tips', 'Buyer checklist'],
+      }
+    );
+  };
+
   const handleAction = async (action, p) => {
     if (action === 'wishlist') {
       if (!user) return toast.error('Please login to save properties');
@@ -238,15 +320,49 @@ export default function PropertyChat() {
 
   const handleSpecialIntent = async (msg) => {
     const m = msg.toLowerCase();
+    if (/open price estimator|price estimator|valuation|estimate price/.test(m)) {
+      addBotMessage('Open the price estimator to calculate expected market value, EMI, and affordability.', {
+        actions: [{ label: 'Open price estimator', to: '/price-estimator' }],
+        chips: ['EMI calculator', 'Search properties', 'Stamp duty help'],
+      });
+      return true;
+    }
+    if (/open compare page|compare page/.test(m)) {
+      addBotMessage('You can compare up to 3 shortlisted properties side by side.', {
+        actions: [{ label: 'Open compare page', to: '/compare' }],
+        chips: ['Search properties', 'Market snapshot', 'Investment tips'],
+      });
+      return true;
+    }
+    if (/market|snapshot|trend|trending|popular|analytics|dashboard/.test(m)) {
+      await showMarketSnapshot();
+      return true;
+    }
     if (/emi|loan|mortgage|calculator/.test(m)) {
       showEmi(msg);
+      return true;
+    }
+    if (/eligibility|eligible|salary|income|afford/.test(m)) {
+      showLoanEligibility(msg);
       return true;
     }
     if (/recommend|ai picks|suggest/.test(m)) {
       await showRecommendations(msg);
       return true;
     }
-    if (/show|search|find|browse|under|below|budget|bhk|flat|apartment|villa|plot|office/.test(m) && !/investment tips|advice/.test(m)) {
+    if (/buyer checklist|documents?|legal|rera|title|verification|checklist|due diligence/.test(m)) {
+      showBuyerChecklist();
+      return true;
+    }
+    if (/stamp|registration|gst|tax|charges|cost guide|extra cost/.test(m)) {
+      showCostGuide(msg);
+      return true;
+    }
+    if (/seller guide|sell property|list property|seller tips|pricing tips/.test(m)) {
+      showSellerGuide();
+      return true;
+    }
+    if (/show|search|find|browse|verified listings|under|below|budget|bhk|flat|apartment|villa|plot|office/.test(m) && !/investment tips|advice/.test(m)) {
       await searchProperties(msg);
       return true;
     }
@@ -273,6 +389,16 @@ export default function PropertyChat() {
         actions: [{ label: 'Open compare page', to: '/compare' }],
         chips: ['Search properties', 'Investment tips'],
       });
+      return true;
+    }
+    if (/investment|roi|rental yield|yield|resale|risk/.test(m)) {
+      addBotMessage(
+        `**Investment Tips**\n\nLook for strong connectivity, job hubs, upcoming infrastructure, rental demand, clean title, manageable maintenance, builder reputation, and realistic resale liquidity. Avoid overpaying for amenities you cannot monetize.`,
+        {
+          actions: [{ label: 'Open AI Picks', to: '/ai-recommendations' }],
+          chips: ['Market snapshot', 'Compare properties', 'Search properties'],
+        }
+      );
       return true;
     }
     if (/location|locality|nearby|area|metro|school|hospital/.test(m)) {
@@ -314,6 +440,10 @@ export default function PropertyChat() {
           category: property.category,
           price: property.price,
           discountPrice: property.discountPrice,
+          brand: property.brand,
+          location: property.location,
+          ratings: property.ratings,
+          stock: property.stock,
           shortDescription: property.shortDescription,
           description: property.description?.substring(0, 300),
           attributes: property.attributes,
@@ -526,9 +656,14 @@ export default function PropertyChat() {
               <div className="grid grid-cols-4 gap-1.5 mb-2">
                 {[
                   { label: 'EMI', icon: <Calculator className="w-3.5 h-3.5" />, text: 'EMI calculator' },
-                  { label: 'Search', icon: <Sparkles className="w-3.5 h-3.5" />, text: 'Search 2BHK under 50 lakh' },
+                  { label: 'Market', icon: <BarChart3 className="w-3.5 h-3.5" />, text: 'Market snapshot' },
+                  { label: 'Search', icon: <Building2 className="w-3.5 h-3.5" />, text: 'Search 2BHK under 50 lakh' },
                   { label: 'Visit', icon: <CalendarCheck className="w-3.5 h-3.5" />, text: 'Book a visit' },
                   { label: 'Area', icon: <MapPin className="w-3.5 h-3.5" />, text: 'Location insights' },
+                  { label: 'Docs', icon: <FileText className="w-3.5 h-3.5" />, text: 'Buyer checklist' },
+                  { label: 'Costs', icon: <Landmark className="w-3.5 h-3.5" />, text: 'Stamp duty help' },
+                  { label: 'Invest', icon: <TrendingUp className="w-3.5 h-3.5" />, text: 'Investment tips' },
+                  { label: 'Safe', icon: <ShieldCheck className="w-3.5 h-3.5" />, text: 'RERA and legal checklist' },
                 ].map(item => (
                   <button key={item.label} onClick={() => send(item.text)}
                     className="flex items-center justify-center gap-1 rounded-xl bg-gray-50 dark:bg-gray-800 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 text-gray-600 dark:text-gray-300 hover:text-indigo-600 dark:hover:text-indigo-300 py-1.5 text-[11px] font-semibold transition-colors">
