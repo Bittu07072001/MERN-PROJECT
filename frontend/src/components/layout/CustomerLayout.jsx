@@ -11,6 +11,7 @@ import toast from 'react-hot-toast';
 import useAuthStore from '../../context/authStore';
 import PropertyChat from '../ai/PropertyChat';
 import CompareBar from '../common/CompareBar';
+import JoinLatestMeetingButton from '../common/JoinLatestMeetingButton';
 import { useThemeStore, useNotifStore, useCartStore, useWishlistStore } from '../../context/stores';
 
 export default function CustomerLayout() {
@@ -212,6 +213,10 @@ export default function CustomerLayout() {
 
               {user && (
                 <>
+                  {user.role === 'customer' && (
+                    <JoinLatestMeetingButton compact className="hidden sm:inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold text-white bg-emerald-600 hover:bg-emerald-700 shadow-md shadow-emerald-500/20 transition-all active:scale-95" />
+                  )}
+
                   {/* Notifications */}
                   <Link to="/notifications" className="icon-btn relative" title="Notifications">
                     <Bell className="w-4.5 h-4.5" />
@@ -290,6 +295,14 @@ export default function CustomerLayout() {
                               </Link>
                             ))}
                           </div>
+                          {user.role === 'customer' && (
+                            <div className="px-2 pb-1">
+                              <JoinLatestMeetingButton
+                                onClick={() => setUserDropdown(false)}
+                                className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold text-white bg-emerald-600 hover:bg-emerald-700 transition-colors"
+                              />
+                            </div>
+                          )}
                           <div className="border-t border-gray-100 dark:border-gray-800 pt-1">
                             <button onClick={handleLogout}
                               className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-900/20 transition-colors">
@@ -367,6 +380,12 @@ export default function CustomerLayout() {
                       Admin Panel
                     </Link>
                   )}
+                  {user?.role === 'customer' && (
+                    <JoinLatestMeetingButton
+                      onClick={() => setMenuOpen(false)}
+                      className="flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-semibold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-900/20 hover:bg-emerald-100 dark:hover:bg-emerald-900/30 transition-all"
+                    />
+                  )}
                 </div>
               </motion.div>
             )}
@@ -438,6 +457,12 @@ export default function CustomerLayout() {
           </div>
         </div>
       </footer>
+
+      {user?.role === 'customer' && (
+        <div className="fixed left-4 bottom-4 z-40 hidden lg:block">
+          <JoinLatestMeetingButton className="flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-emerald-600 text-white font-semibold text-sm shadow-xl shadow-emerald-500/25 hover:bg-emerald-700 transition-all active:scale-95" />
+        </div>
+      )}
 
       <PropertyChat />
       <CompareBar />

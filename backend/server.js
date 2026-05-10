@@ -62,11 +62,12 @@ app.use('/api/coupons',       require('./routes/coupons'));
 app.use('/api/admin',         require('./routes/admin'));
 app.use('/api/seller',        require('./routes/seller'));
 app.use('/api/bookings',      require('./routes/bookings'));
+app.use('/api/meetings',      require('./routes/meetings'));
 app.use('/api/chat',          require('./routes/chat'));
 app.use('/api/ai',            require('./routes/ai'));
 app.use('/api/analytics',     require('./routes/analytics'));
 
-app.get('/api/health', (_, res) => res.json({ status: 'OK', message: 'HomeConnect API Running 🚀' }));
+app.get('/api/health', (_, res) => res.json({ status: 'OK', message: 'HomeConnect API Running' }));
 
 // Global error handler
 app.use((err, req, res, next) => {
@@ -75,14 +76,24 @@ app.use((err, req, res, next) => {
 });
 
 const PORT = process.env.PORT || 5000;
-server.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
+server.on('error', (err) => {
+  if (err.code === 'EADDRINUSE') {
+    console.error(`Port ${PORT} is already in use. Stop the existing backend process or set a different PORT in backend/.env.`);
+    process.exit(1);
+  }
+
+  console.error('Server failed to start:', err);
+  process.exit(1);
+});
+
+server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
 
 // Handle unhandled promise rejections and uncaught exceptions gracefully
 process.on('unhandledRejection', (reason, promise) => {
-  console.error('⚠️  Unhandled Rejection at:', promise, 'reason:', reason);
+  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
 });
 process.on('uncaughtException', (err) => {
-  console.error('💥 Uncaught Exception:', err);
+  console.error('Uncaught Exception:', err);
   process.exit(1);
 });
 

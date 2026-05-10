@@ -35,6 +35,7 @@ import LocationSuggestions from './pages/customer/LocationSuggestions';
 import Compare             from './pages/customer/Compare';
 import Contact             from './pages/customer/Contact';
 import Analytics           from './pages/customer/Analytics';
+import Meeting             from './Meeting';
 
 // Admin
 import AdminDashboard from './pages/admin/Dashboard';
@@ -46,6 +47,7 @@ import AdminBookings  from './pages/admin/Bookings';
 import AdminAILogs    from './pages/admin/AILogs';
 import AdminOverview  from './pages/admin/Overview';
 import AdminSellers   from './pages/admin/Sellers';
+import ScheduleMeeting from './pages/admin/ScheduleMeeting';
 
 // Seller
 import SellerDashboard from './pages/seller/Dashboard';
@@ -141,6 +143,7 @@ export default function App() {
         <Route path="/forgot-password" element={<PublicRoute><ForgotPassword /></PublicRoute>} />
         <Route path="/reset-password/:token" element={<PublicRoute><ResetPassword /></PublicRoute>} />
         <Route path="/dev-login" element={<DevLogin />} />
+        <Route path="/meeting/:roomName" element={<ProtectedRoute allowedRoles={['admin','seller','customer']}><Meeting /></ProtectedRoute>} />
 
         {/* Customer */}
         <Route path="/" element={<CustomerRoute><CustomerLayout /></CustomerRoute>}>
@@ -177,6 +180,7 @@ export default function App() {
           <Route path="coupons"   element={<AdminCoupons />} />
           <Route path="bookings"  element={<AdminBookings />} />
           <Route path="ai-logs"   element={<AdminAILogs />} />
+          <Route path="schedule-meeting" element={<ScheduleMeeting />} />
         </Route>
 
         {/* Seller */}

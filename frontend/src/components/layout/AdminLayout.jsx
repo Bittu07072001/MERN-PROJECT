@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard, Users, ShoppingBag, Package, Tag,
-  CalendarCheck, Menu, LogOut, Sun, Moon, Sparkles, ChevronRight, BarChart3, Store, ShieldCheck
+  CalendarCheck, Menu, LogOut, Sun, Moon, Sparkles, ChevronRight, BarChart3, Store, ShieldCheck, Video
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
@@ -104,6 +104,7 @@ export default function AdminLayout() {
     { to: '/admin/products',  icon: <ShoppingBag className="w-4.5 h-4.5" />,     label: 'Properties', badge: pendingProperties, color: 'text-emerald-500' },
     { to: '/admin/coupons',   icon: <Tag className="w-4.5 h-4.5" />,             label: 'Coupons',    badge: 0,               color: 'text-rose-500' },
     { to: '/admin/bookings',  icon: <CalendarCheck className="w-4.5 h-4.5" />,   label: 'Bookings',   badge: pendingBookings,  color: 'text-cyan-500' },
+    { to: '/admin/schedule-meeting', icon: <Video className="w-4.5 h-4.5" />,    label: 'Schedule Meeting', badge: 0,           color: 'text-indigo-500' },
     { to: '/admin/ai-logs',   icon: <Sparkles className="w-4.5 h-4.5" />,        label: 'AI Logs',    badge: 0,               color: 'text-violet-500' },
   ];
 

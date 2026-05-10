@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
 import useAuthStore from '../../context/authStore';
 import { useThemeStore } from '../../context/stores';
+import JoinLatestMeetingButton from '../common/JoinLatestMeetingButton';
 
 const NAV = [
   { to: '/seller',              icon: <LayoutDashboard className="w-4.5 h-4.5" />, label: 'Dashboard',     color: 'text-blue-500' },
@@ -64,6 +65,8 @@ export default function SellerLayout() {
 
       {/* Bottom */}
       <div className="p-3 border-t border-gray-100 dark:border-gray-800/60 space-y-3">
+        <JoinLatestMeetingButton className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-emerald-600 text-white font-semibold text-sm shadow-md hover:bg-emerald-700 transition-all active:scale-[0.97]" />
+
         {/* Quick add button */}
         <Link to="/seller/products/add"
           className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-gradient-to-r from-violet-600 to-purple-500 text-white font-semibold text-sm shadow-md hover:shadow-lg transition-all hover:from-violet-700 hover:to-purple-600 active:scale-[0.97]">
@@ -134,10 +137,13 @@ export default function SellerLayout() {
               <p className="text-[10px] text-gray-500 dark:text-gray-500 hidden sm:block">HomeConnect Seller Portal</p>
             </div>
           </div>
-          <Link to="/seller/products/add"
-            className="hidden sm:flex items-center gap-1.5 px-4 py-1.5 rounded-xl bg-gradient-to-r from-violet-600 to-purple-500 text-white font-semibold text-xs shadow-md hover:shadow-lg transition-all active:scale-95">
-            <Plus className="w-3.5 h-3.5" /> New Listing
-          </Link>
+          <div className="hidden sm:flex items-center gap-2">
+            <JoinLatestMeetingButton compact className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-xl bg-emerald-600 text-white font-semibold text-xs shadow-md hover:bg-emerald-700 transition-all active:scale-95" />
+            <Link to="/seller/products/add"
+              className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-xl bg-gradient-to-r from-violet-600 to-purple-500 text-white font-semibold text-xs shadow-md hover:shadow-lg transition-all active:scale-95">
+              <Plus className="w-3.5 h-3.5" /> New Listing
+            </Link>
+          </div>
         </header>
         <main className="flex-1 overflow-y-auto p-5 lg:p-6">
           <Outlet />
