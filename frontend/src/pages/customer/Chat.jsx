@@ -6,6 +6,7 @@ import { io } from 'socket.io-client';
 import toast from 'react-hot-toast';
 import api from '../../utils/api';
 import useAuthStore from '../../context/authStore';
+import { socketURL } from '../../utils/socket';
 
 function timeAgo(date) {
   if (!date) return '';
@@ -101,7 +102,7 @@ export default function Chat() {
 
   useEffect(() => {
     if (!user) return;
-    const socket = io('/', { path: '/socket.io', transports: ['websocket', 'polling'] });
+    const socket = io(socketURL, { path: '/socket.io', transports: ['websocket', 'polling'] });
     socketRef.current = socket;
 
     socket.emit('join', user._id);

@@ -14,6 +14,7 @@ import CompareBar from '../common/CompareBar';
 import JoinLatestMeetingButton from '../common/JoinLatestMeetingButton';
 import AtsReportButton from '../common/AtsReportButton';
 import { useThemeStore, useNotifStore, useCartStore, useWishlistStore } from '../../context/stores';
+import { socketURL } from '../../utils/socket';
 
 export default function CustomerLayout() {
   const { user, logout } = useAuthStore();
@@ -45,7 +46,7 @@ export default function CustomerLayout() {
 
   useEffect(() => {
     if (!user) return;
-    const socket = io('/', { path: '/socket.io', transports: ['websocket', 'polling'] });
+    const socket = io(socketURL, { path: '/socket.io', transports: ['websocket', 'polling'] });
     socket.emit('join', user._id);
     socket.on('notification', (notif) => { pushNotif(notif); toast(`🔔 ${notif.title}`, { icon: null }); });
     socket.on('orderUpdate', ({ status }) => { toast.success(`Order ${status.replace(/_/g, ' ')} 📦`); });

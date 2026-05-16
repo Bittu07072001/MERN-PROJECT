@@ -10,6 +10,7 @@ import { io as socketIO } from 'socket.io-client';
 import useAuthStore from '../../context/authStore';
 import { useThemeStore, useAdminLiveStore } from '../../context/stores';
 import AdminAtsReportButton from '../common/AdminAtsReportButton';
+import { socketURL } from '../../utils/socket';
 
 export default function AdminLayout() {
   const { user, logout } = useAuthStore();
@@ -23,7 +24,7 @@ export default function AdminLayout() {
 
   useEffect(() => {
     fetchCounts();
-    const socket = socketIO('/', { path: '/socket.io', transports: ['websocket', 'polling'] });
+    const socket = socketIO(socketURL, { path: '/socket.io', transports: ['websocket', 'polling'] });
     socketRef.current = socket;
     socket.emit('joinAdmin');
 

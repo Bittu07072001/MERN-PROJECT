@@ -16,7 +16,10 @@ app.set('trust proxy', 1);
 const server = http.createServer(app);
 
 const allowedOrigins = process.env.NODE_ENV === 'production'
-  ? [process.env.CLIENT_URL].filter(Boolean)
+  ? (process.env.CLIENT_URL || process.env.CORS_ORIGIN || '')
+      .split(',')
+      .map(origin => origin.trim())
+      .filter(Boolean)
   : true;
 
 // Socket.io
