@@ -11,6 +11,8 @@ const userSchema = new mongoose.Schema({
   roles: { type: [String], enum: ['customer', 'seller', 'admin'], default: ['customer'] },
   avatar: { type: String, default: '' },
   phone:  { type: String, default: '' },
+  googleId: { type: String, default: '', index: true },
+  authProvider: { type: String, enum: ['local', 'google'], default: 'local' },
   isPhoneVerified: { type: Boolean, default: false },
 
   addresses: [{

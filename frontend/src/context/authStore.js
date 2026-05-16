@@ -55,6 +55,17 @@ const useAuthStore = create((set, get) => ({
     return { success: true, userId: data.userId, requireOTPVerification: data.requireOTPVerification };
   },
 
+  googleAuth: async ({ credential, roles }) => {
+    const { data } = await api.post('/auth/google', { credential, roles });
+    if (data.requireRoleSelection) {
+      return { requireRoleSelection: true, userId: data.userId, availableRoles: data.availableRoles };
+    }
+    localStorage.setItem('token', data.token);
+    localStorage.setItem('refreshToken', data.refreshToken);
+    set({ user: data.user, token: data.token });
+    return { success: true, role: data.user.role };
+  },
+
   logout: async () => {
     try { await api.post('/auth/logout'); } catch {}
     localStorage.removeItem('token');

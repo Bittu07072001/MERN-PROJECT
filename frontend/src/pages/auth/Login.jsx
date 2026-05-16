@@ -1,10 +1,11 @@
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Eye, EyeOff, Mail, Lock, ArrowRight, RefreshCw, Sparkles, Shield, CheckCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
 import useAuthStore from '../../context/authStore';
 import api from '../../utils/api';
+import GoogleAuthButton from '../../components/auth/GoogleAuthButton';
 
 const FEATURES = [
   { icon: Sparkles, text: 'AI-Powered Property Search' },
@@ -16,7 +17,7 @@ const getVisibleLoginRoles = (roles) =>
   roles.includes('seller') ? roles.filter(role => role !== 'customer') : roles;
 
 export default function Login() {
-  const { login, verifyOTP, selectRole } = useAuthStore();
+  const { login, verifyOTP, selectRole, googleAuth } = useAuthStore();
   const navigate = useNavigate();
 
   const [step,    setStep]    = useState('login');
@@ -29,6 +30,31 @@ export default function Login() {
   const [form,    setForm]    = useState({ emailOrPhone: '', password: '' });
 
   const handleChange = (e) => setForm(f => ({ ...f, [e.target.name]: e.target.value }));
+
+  const handleGoogleAuth = useCallback(async (credential) => {
+    setLoading(true);
+    try {
+      const res = await googleAuth({ credential });
+      if (res.requireRoleSelection) {
+        const visibleRoles = getVisibleLoginRoles(res.availableRoles || []);
+        if (visibleRoles.length === 1) {
+          const selected = await selectRole(res.userId, visibleRoles[0]);
+          toast.success(`Signed in as ${selected.role}!`);
+          navigate(selected.role === 'admin' ? '/admin' : selected.role === 'seller' ? '/seller' : '/');
+          return;
+        }
+        setAvailableRoles(visibleRoles);
+        setUserId(res.userId);
+        setStep('role');
+        toast.success('Choose your role to continue.');
+        return;
+      }
+      toast.success('Signed in with Google!');
+      navigate(res.role === 'admin' ? '/admin' : res.role === 'seller' ? '/seller' : '/');
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Google sign-in failed');
+    } finally { setLoading(false); }
+  }, [googleAuth, navigate, selectRole]);
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -261,6 +287,14 @@ export default function Login() {
                       : <><span>Sign In</span><ArrowRight className="w-4 h-4" /></>
                     }
                   </button>
+
+                  <div className="flex items-center gap-3">
+                    <div className="h-px flex-1 bg-gray-200 dark:bg-gray-700" />
+                    <span className="text-xs font-semibold uppercase tracking-wide text-gray-400">or</span>
+                    <div className="h-px flex-1 bg-gray-200 dark:bg-gray-700" />
+                  </div>
+
+                  <GoogleAuthButton text="signin_with" onCredential={handleGoogleAuth} />
 
                   <p className="text-center text-sm text-gray-600 dark:text-gray-400">
                     Don't have an account?{' '}

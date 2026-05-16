@@ -5,7 +5,7 @@ import { Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import api from '../../utils/api';
 
-const CATEGORIES = ['Flat', 'Apartments', 'Villa', 'Plot', 'Condominium', 'Office'];
+const CATEGORIES = ['Flat', 'Apartments', 'Condominium', 'Office', 'Commercial', 'Studio', 'Penthouse', 'Villa', 'Plot'];
 const CITIES = ['Mumbai', 'Delhi', 'Bangalore', 'Pune', 'Hyderabad', 'Chennai', 'Gurgaon', 'Noida', 'Thane', 'Navi Mumbai'];
 
 function fmt(n) {

@@ -692,7 +692,7 @@ export default function PropertyChat() {
                   <Send className="w-3.5 h-3.5" />
                 </button>
               </div>
-              <p className="text-center text-xs text-gray-400 mt-1.5">Powered by Groq AI · llama-3.3-70b</p>
+              <p className="text-center text-xs text-gray-400 mt-1.5">Powered by Groq AI · llama-3.1-8b-instant</p>
             </div>
           </motion.div>
         )}

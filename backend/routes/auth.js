@@ -6,6 +6,7 @@ const { protect } = require('../middleware/auth');
 router.post('/register',                ctrl.register);
 router.post('/verify-registration-otp', ctrl.verifyRegistrationOTP);
 router.post('/login',                   ctrl.login);
+router.post('/google',                  ctrl.googleAuth);
 router.post('/verify-login-otp',        ctrl.verifyLoginOTP);
 router.post('/select-role',             ctrl.selectRole);
 router.post('/resend-otp',              ctrl.resendOTP);

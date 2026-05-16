@@ -5,7 +5,7 @@ import toast from 'react-hot-toast';
 import api from '../../utils/api';
 
 const CITIES = ['Mumbai', 'Delhi', 'Bangalore', 'Pune', 'Hyderabad', 'Chennai', 'Gurgaon', 'Noida', 'Thane', 'Navi Mumbai', 'Kolkata', 'Ahmedabad', 'Jaipur', 'Lucknow', 'Kochi'];
-const PROPERTY_TYPES = ['Flat', 'Apartments', 'Villa', 'Plot', 'Condominium', 'Office'];
+const PROPERTY_TYPES = ['Flat', 'Apartments', 'Condominium', 'Office', 'Commercial', 'Studio', 'Penthouse', 'Villa', 'Plot'];
 
 function TrendBadge({ trend }) {
   if (trend === 'rising') return (

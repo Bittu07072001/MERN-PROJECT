@@ -5,7 +5,7 @@ import { Link } from 'react-router-dom';
 import { computeInvestmentScore, scoreColor } from '../../utils/aiScore';
 
 const CITIES = ['Mumbai','Delhi','Bangalore','Gurgaon','Pune','Hyderabad','Chennai','Noida','Kolkata','Thane','Navi Mumbai'];
-const CATEGORIES = ['Flat','Apartments','Villa','Condominium','Office','Plot'];
+const CATEGORIES = ['Flat','Apartments','Condominium','Office','Commercial','Studio','Penthouse','Villa','Plot'];
 const BHK_OPTIONS = ['Studio','1 BHK','2 BHK','3 BHK','4 BHK','4+ BHK'];
 const FURNISHING = ['Fully Furnished','Semi Furnished','Unfurnished'];
 const AGES = ['New / Under Construction','0–2 years','3–5 years','6–10 years','10+ years'];
@@ -13,17 +13,17 @@ const FLOORS = ['Ground','1–5','6–10','11–20','Penthouse'];
 
 // Base price per sqft (₹) — city × category
 const BASE = {
-  Mumbai:      { Flat: 36000, Apartments: 29000, Villa: 48000, Condominium: 34000, Office: 22000, Plot: 26000 },
-  Delhi:       { Flat: 22000, Apartments: 18000, Villa: 30000, Condominium: 25000, Office: 15000, Plot: 18000 },
-  Bangalore:   { Flat: 14000, Apartments: 12000, Villa: 19000, Condominium: 15000, Office: 10000, Plot: 8000 },
-  Gurgaon:     { Flat: 19000, Apartments: 16000, Villa: 26000, Condominium: 21000, Office: 13000, Plot: 13000 },
-  Pune:        { Flat: 10000, Apartments: 8500,  Villa: 14000, Condominium: 11000, Office: 7000,  Plot: 5000 },
-  Hyderabad:   { Flat: 9000,  Apartments: 7500,  Villa: 13000, Condominium: 10000, Office: 6000,  Plot: 4500 },
-  Chennai:     { Flat: 11000, Apartments: 9000,  Villa: 15000, Condominium: 12000, Office: 7500,  Plot: 5500 },
-  Noida:       { Flat: 12000, Apartments: 10000, Villa: 18000, Condominium: 14000, Office: 8000,  Plot: 7000 },
-  Kolkata:     { Flat: 8000,  Apartments: 7000,  Villa: 12000, Condominium: 9000,  Office: 5500,  Plot: 4000 },
-  'Thane':     { Flat: 14000, Apartments: 12000, Villa: 18000, Condominium: 15000, Office: 8000,  Plot: 7000 },
-  'Navi Mumbai': { Flat: 15000, Apartments: 12500, Villa: 20000, Condominium: 16000, Office: 9000, Plot: 8000 },
+  Mumbai:      { Flat: 36000, Apartments: 29000, Condominium: 34000, Office: 22000, Commercial: 30000, Studio: 31000, Penthouse: 52000, Villa: 48000, Plot: 26000 },
+  Delhi:       { Flat: 22000, Apartments: 18000, Condominium: 25000, Office: 15000, Commercial: 21000, Studio: 19000, Penthouse: 34000, Villa: 30000, Plot: 18000 },
+  Bangalore:   { Flat: 14000, Apartments: 12000, Condominium: 15000, Office: 10000, Commercial: 13500, Studio: 12500, Penthouse: 22000, Villa: 19000, Plot: 8000 },
+  Gurgaon:     { Flat: 19000, Apartments: 16000, Condominium: 21000, Office: 13000, Commercial: 18500, Studio: 17000, Penthouse: 30000, Villa: 26000, Plot: 13000 },
+  Pune:        { Flat: 10000, Apartments: 8500,  Condominium: 11000, Office: 7000,  Commercial: 9500,  Studio: 9000,  Penthouse: 16000, Villa: 14000, Plot: 5000 },
+  Hyderabad:   { Flat: 9000,  Apartments: 7500,  Condominium: 10000, Office: 6000,  Commercial: 8500,  Studio: 8000,  Penthouse: 15000, Villa: 13000, Plot: 4500 },
+  Chennai:     { Flat: 11000, Apartments: 9000,  Condominium: 12000, Office: 7500,  Commercial: 10500, Studio: 9500,  Penthouse: 17000, Villa: 15000, Plot: 5500 },
+  Noida:       { Flat: 12000, Apartments: 10000, Condominium: 14000, Office: 8000,  Commercial: 11500, Studio: 10500, Penthouse: 21000, Villa: 18000, Plot: 7000 },
+  Kolkata:     { Flat: 8000,  Apartments: 7000,  Condominium: 9000,  Office: 5500,  Commercial: 7500,  Studio: 7200,  Penthouse: 13500, Villa: 12000, Plot: 4000 },
+  'Thane':     { Flat: 14000, Apartments: 12000, Condominium: 15000, Office: 8000,  Commercial: 12500, Studio: 12500, Penthouse: 21000, Villa: 18000, Plot: 7000 },
+  'Navi Mumbai': { Flat: 15000, Apartments: 12500, Condominium: 16000, Office: 9000, Commercial: 14000, Studio: 13000, Penthouse: 23000, Villa: 20000, Plot: 8000 },
 };
 
 const FURN_MOD  = { 'Fully Furnished': 1.15, 'Semi Furnished': 1.07, 'Unfurnished': 1.0 };

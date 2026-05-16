@@ -1,6 +1,7 @@
 const jwt      = require('jsonwebtoken');
 const crypto   = require('crypto');
 const speakeasy= require('speakeasy');
+const axios    = require('axios');
 const User     = require('../models/User');
 const { generateOTP, sendOTPEmail } = require('../utils/email');
 
@@ -15,6 +16,33 @@ const getLoginRoles = (roles) => {
   return userRoles.includes('seller')
     ? userRoles.filter(role => role !== 'customer')
     : userRoles;
+};
+
+const authPayload = (user, role = user.role) => {
+  const userRoles = user.roles && user.roles.length > 0 ? user.roles : [role];
+  return {
+    _id: user._id,
+    name: user.name,
+    email: user.email,
+    role,
+    roles: userRoles,
+    avatar: user.avatar,
+    phone: user.phone,
+    preferences: user.preferences,
+  };
+};
+
+const issueAuthSession = async (user, role = user.role) => {
+  if (user.role !== role) user.role = role;
+  user.lastLogin = new Date();
+  user.isOnline = true;
+
+  const token = signToken(user._id, role);
+  const refreshToken = signRefreshToken(user._id);
+  user.refreshToken = refreshToken;
+  await user.save();
+
+  return { token, refreshToken, user: authPayload(user, role) };
 };
 
 // ─── REGISTER ────────────────────────────────────────────────────────────────
@@ -150,6 +178,80 @@ exports.login = async (req, res) => {
     });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+// ─── GOOGLE AUTH ───────────────────────────────────────────────────────────────
+exports.googleAuth = async (req, res) => {
+  try {
+    const { credential } = req.body;
+    const requestedRoles = Array.isArray(req.body.roles) ? req.body.roles : (req.body.role ? [req.body.role] : ['customer']);
+    const allowedRoles = ['customer', 'seller', 'admin'];
+    const userRoles = [...new Set(requestedRoles.filter(r => allowedRoles.includes(r)))];
+    if (userRoles.length === 0) userRoles.push('customer');
+
+    if (!credential) {
+      return res.status(400).json({ success: false, message: 'Google credential is required' });
+    }
+    if (!process.env.GOOGLE_CLIENT_ID) {
+      return res.status(500).json({ success: false, message: 'Google auth is not configured' });
+    }
+
+    const { data: profile } = await axios.get('https://oauth2.googleapis.com/tokeninfo', {
+      params: { id_token: credential },
+    });
+
+    if (profile.aud !== process.env.GOOGLE_CLIENT_ID) {
+      return res.status(401).json({ success: false, message: 'Invalid Google client' });
+    }
+    if (profile.email_verified !== 'true' && profile.email_verified !== true) {
+      return res.status(401).json({ success: false, message: 'Google email is not verified' });
+    }
+
+    const email = String(profile.email || '').toLowerCase();
+    if (!email) {
+      return res.status(400).json({ success: false, message: 'Google account email is required' });
+    }
+
+    let user = await User.findOne({ email }).select('+refreshToken');
+    if (!user) {
+      user = await User.create({
+        name: profile.name || email.split('@')[0],
+        email,
+        password: crypto.randomBytes(24).toString('hex'),
+        role: userRoles[0],
+        roles: userRoles,
+        avatar: profile.picture || '',
+        googleId: profile.sub || '',
+        authProvider: 'google',
+        isEmailVerified: true,
+        lastLogin: new Date(),
+      });
+    } else {
+      if (!user.isActive) {
+        return res.status(403).json({ success: false, message: 'Account deactivated. Contact support.' });
+      }
+      user.googleId = user.googleId || profile.sub || '';
+      user.authProvider = user.authProvider === 'local' ? 'local' : 'google';
+      user.avatar = user.avatar || profile.picture || '';
+      user.isEmailVerified = true;
+    }
+
+    const loginRoles = getLoginRoles(user.roles && user.roles.length > 0 ? user.roles : [user.role]);
+    if (loginRoles.length > 1) {
+      await user.save();
+      return res.json({
+        success: true,
+        requireRoleSelection: true,
+        userId: user._id,
+        availableRoles: loginRoles,
+      });
+    }
+
+    const session = await issueAuthSession(user, loginRoles[0] || user.role);
+    res.json({ success: true, ...session });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.response?.data?.error_description || err.message });
   }
 };
 
