@@ -1,7 +1,7 @@
 // ProductDetail.jsx
 import { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { Heart, ShoppingCart, Star, Truck, Shield, ChevronLeft, ChevronRight, Package, Minus, Plus, Play, CalendarCheck, TrendingUp, PenLine, ThumbsUp, CheckCircle2, MessageSquare } from 'lucide-react';
+import { Heart, ShoppingCart, Star, Shield, ChevronLeft, ChevronRight, Package, Minus, Plus, Play, CalendarCheck, TrendingUp, PenLine, ThumbsUp, CheckCircle2, MessageSquare } from 'lucide-react';
 import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
 import api from '../../utils/api';
@@ -337,11 +337,7 @@ export default function ProductDetail() {
           </button>
 
           {/* Info chips */}
-          <div className="grid grid-cols-2 gap-3 pt-2">
-            <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-800/50 rounded-xl p-3">
-              <Truck className="w-4 h-4 text-blue-500 flex-shrink-0" />
-              <span>{product.shippingInfo?.freeShipping ? 'Free delivery' : `₹${product.shippingInfo?.shippingCost || 50} delivery`}</span>
-            </div>
+          <div className="grid grid-cols-1 gap-3 pt-2">
             <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-800/50 rounded-xl p-3">
               <Shield className="w-4 h-4 text-green-500 flex-shrink-0" />
               <span>Secure payment</span>
