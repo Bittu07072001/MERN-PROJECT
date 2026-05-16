@@ -40,6 +40,10 @@ app.use(cors({
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
+app.get('/', (_, res) => {
+  res.send('Backend API Running Successfully');
+});
+
 // Serve uploaded files (images/videos) statically
 const path = require('path');
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
