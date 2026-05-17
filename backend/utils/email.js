@@ -78,5 +78,6 @@ exports.sendOTPEmail = async (email, otp, type = 'login') => {
     console.error('❌ Email send failed:', err.message);
     // Don't throw – log OTP for dev
     console.log(`🔑 FALLBACK OTP for ${email}: ${otp}`);
+    if (process.env.NODE_ENV === 'production') throw err;
   }
 };

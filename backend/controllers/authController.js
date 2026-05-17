@@ -5,11 +5,18 @@ const axios    = require('axios');
 const User     = require('../models/User');
 const { generateOTP, sendOTPEmail } = require('../utils/email');
 
+const requireEnv = (key) => {
+  if (!process.env[key]) throw new Error(`${key} is not configured`);
+  return process.env[key];
+};
+
 const signToken = (id, role) =>
-  jwt.sign({ id, role }, process.env.JWT_SECRET, { expiresIn: process.env.JWT_EXPIRE || '7d' });
+  jwt.sign({ id, role }, requireEnv('JWT_SECRET'), { expiresIn: process.env.JWT_EXPIRE || '7d' });
 
 const signRefreshToken = (id) =>
-  jwt.sign({ id }, process.env.JWT_REFRESH_SECRET, { expiresIn: process.env.JWT_REFRESH_EXPIRE || '30d' });
+  jwt.sign({ id }, requireEnv('JWT_REFRESH_SECRET'), { expiresIn: process.env.JWT_REFRESH_EXPIRE || '30d' });
+
+const normalizeOTP = (otp) => String(otp || '').trim();
 
 const getLoginRoles = (roles) => {
   const userRoles = roles && roles.length > 0 ? roles : ['customer'];
@@ -99,10 +106,11 @@ exports.register = async (req, res) => {
 exports.verifyRegistrationOTP = async (req, res) => {
   try {
     const { userId, otp } = req.body;
+    const submittedOtp = normalizeOTP(otp);
     const user = await User.findById(userId).select('+loginOtp +loginOtpExpires');
 
     if (!user) return res.status(404).json({ success: false, message: 'User not found' });
-    if (!user.loginOtp || user.loginOtp !== otp)
+    if (!user.loginOtp || normalizeOTP(user.loginOtp) !== submittedOtp)
       return res.status(400).json({ success: false, message: 'Invalid OTP' });
     if (user.loginOtpExpires < new Date())
       return res.status(400).json({ success: false, message: 'OTP expired. Please register again.' });
@@ -259,10 +267,11 @@ exports.googleAuth = async (req, res) => {
 exports.verifyLoginOTP = async (req, res) => {
   try {
     const { userId, otp } = req.body;
+    const submittedOtp = normalizeOTP(otp);
     const user = await User.findById(userId).select('+loginOtp +loginOtpExpires');
 
     if (!user) return res.status(404).json({ success: false, message: 'User not found' });
-    if (!user.loginOtp || user.loginOtp !== otp)
+    if (!user.loginOtp || normalizeOTP(user.loginOtp) !== submittedOtp)
       return res.status(400).json({ success: false, message: 'Invalid OTP' });
     if (user.loginOtpExpires < new Date())
       return res.status(400).json({ success: false, message: 'OTP expired. Please login again.' });
@@ -388,10 +397,11 @@ exports.forgotPassword = async (req, res) => {
 exports.verifyResetOTP = async (req, res) => {
   try {
     const { userId, otp } = req.body;
+    const submittedOtp = normalizeOTP(otp);
     const user = await User.findById(userId).select('+resetOtp +resetOtpExpires');
 
     if (!user) return res.status(404).json({ success: false, message: 'User not found' });
-    if (!user.resetOtp || user.resetOtp !== otp)
+    if (!user.resetOtp || normalizeOTP(user.resetOtp) !== submittedOtp)
       return res.status(400).json({ success: false, message: 'Invalid OTP' });
     if (user.resetOtpExpires < new Date())
       return res.status(400).json({ success: false, message: 'OTP expired' });
