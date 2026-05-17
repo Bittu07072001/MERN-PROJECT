@@ -38,6 +38,12 @@ function toCoordinatePair(location) {
   return Number.isFinite(lat) && Number.isFinite(lng) ? { lat, lng } : null;
 }
 
+function getOsmEmbedUrl({ lat, lng }) {
+  const delta = 0.01;
+  const bbox = [lng - delta, lat - delta, lng + delta, lat + delta].join(',');
+  return `https://www.openstreetmap.org/export/embed.html?bbox=${bbox}&layer=mapnik&marker=${lat},${lng}`;
+}
+
 export default function MapView({ address, propertyName, location, className = '' }) {
   const mapRef = useRef(null);
   const mapInstanceRef = useRef(null);
@@ -46,13 +52,17 @@ export default function MapView({ address, propertyName, location, className = '
   const [mapLoaded, setMapLoaded] = useState(false);
   const [mapError, setMapError] = useState(false);
   const [locating, setLocating] = useState(false);
+  const [fallbackCoordinates, setFallbackCoordinates] = useState(null);
+  const [fallbackLoading, setFallbackLoading] = useState(false);
+  const [forceFallbackMap, setForceFallbackMap] = useState(false);
 
-  const apiKey = import.meta.env.VITE_GOOGLE_MAPS_KEY;
+  const apiKey = import.meta.env.VITE_GOOGLE_MAPS_KEY || import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
   const canUseGoogleMapsApi = hasValidApiKey(apiKey);
+  const useGoogleMap = canUseGoogleMapsApi && !forceFallbackMap;
   const coordinates = useMemo(() => toCoordinatePair(location), [location?.lat, location?.lng]);
   const displayAddress = address || [location?.address, location?.city, location?.state, location?.pincode].filter(Boolean).join(', ');
   const query = encodeURIComponent(displayAddress || propertyName || 'India');
-  const embedUrl = `https://maps.google.com/maps?q=${query}&output=embed`;
+  const fallbackMapUrl = fallbackCoordinates ? getOsmEmbedUrl(fallbackCoordinates) : '';
   const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${query}`;
 
   const mapOptions = useMemo(() => ({
@@ -67,7 +77,7 @@ export default function MapView({ address, propertyName, location, className = '
     let cancelled = false;
 
     async function renderMap() {
-      if (!canUseGoogleMapsApi || !mapRef.current) return;
+      if (!useGoogleMap || !mapRef.current) return;
 
       setMapLoaded(false);
       setMapError(false);
@@ -100,14 +110,14 @@ export default function MapView({ address, propertyName, location, className = '
         geocoder.geocode({ address: displayAddress || propertyName || 'India' }, (results, status) => {
           if (cancelled) return;
           if (status !== 'OK' || !results?.[0]) {
-            setMapError(true);
+            setForceFallbackMap(true);
             return;
           }
 
           placeMarker(results[0].geometry.location, results[0].formatted_address);
         });
       } catch {
-        if (!cancelled) setMapError(true);
+        if (!cancelled) setForceFallbackMap(true);
       }
     }
 
@@ -118,7 +128,65 @@ export default function MapView({ address, propertyName, location, className = '
       propertyMarkerRef.current?.setMap?.(null);
       userMarkerRef.current?.setMap?.(null);
     };
-  }, [apiKey, canUseGoogleMapsApi, coordinates, displayAddress, mapOptions, propertyName]);
+  }, [apiKey, useGoogleMap, coordinates, displayAddress, mapOptions, propertyName]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function resolveFallbackMap() {
+      if (useGoogleMap) return;
+
+      setMapLoaded(false);
+      setMapError(false);
+      setFallbackCoordinates(null);
+
+      if (coordinates) {
+        setFallbackCoordinates(coordinates);
+        return;
+      }
+
+      const searchText = displayAddress || propertyName;
+      if (!searchText) {
+        setMapError(true);
+        return;
+      }
+
+      setFallbackLoading(true);
+
+      try {
+        const params = new URLSearchParams({
+          q: searchText,
+          format: 'json',
+          limit: '1',
+        });
+        const response = await fetch(`https://nominatim.openstreetmap.org/search?${params.toString()}`, {
+          headers: { Accept: 'application/json' },
+        });
+
+        if (!response.ok) throw new Error('Geocoding failed');
+
+        const results = await response.json();
+        const first = results?.[0];
+        const position = first ? { lat: Number(first.lat), lng: Number(first.lon) } : null;
+
+        if (!cancelled && position && Number.isFinite(position.lat) && Number.isFinite(position.lng)) {
+          setFallbackCoordinates(position);
+        } else if (!cancelled) {
+          setMapError(true);
+        }
+      } catch {
+        if (!cancelled) setMapError(true);
+      } finally {
+        if (!cancelled) setFallbackLoading(false);
+      }
+    }
+
+    resolveFallbackMap();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [useGoogleMap, coordinates, displayAddress, propertyName]);
 
   const showMyLocation = () => {
     if (!navigator.geolocation || !window.google?.maps || !mapInstanceRef.current) return;
@@ -158,7 +226,7 @@ export default function MapView({ address, propertyName, location, className = '
           {displayAddress && <span className="text-xs text-gray-500 dark:text-gray-400 truncate max-w-[220px]">- {displayAddress}</span>}
         </div>
         <div className="flex items-center gap-2 flex-shrink-0">
-          {canUseGoogleMapsApi && mapLoaded && !mapError && (
+          {useGoogleMap && mapLoaded && !mapError && (
             <button
               type="button"
               onClick={showMyLocation}
@@ -177,7 +245,7 @@ export default function MapView({ address, propertyName, location, className = '
       </div>
 
       <div className="relative h-64 bg-gray-100 dark:bg-gray-700">
-        {!mapLoaded && !mapError && (
+        {(!mapLoaded || fallbackLoading) && !mapError && (
           <div className="absolute inset-0 flex items-center justify-center">
             <div className="w-8 h-8 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin" />
           </div>
@@ -192,27 +260,26 @@ export default function MapView({ address, propertyName, location, className = '
               Open in Google Maps
             </a>
           </div>
-        ) : canUseGoogleMapsApi ? (
+        ) : useGoogleMap ? (
           <div
             ref={mapRef}
             title={`Map for ${propertyName}`}
             className={`w-full h-full transition-opacity duration-300 ${mapLoaded ? 'opacity-100' : 'opacity-0'}`}
           />
-        ) : (
+        ) : fallbackMapUrl ? (
           <iframe
-            src={embedUrl}
+            src={fallbackMapUrl}
             width="100%"
             height="100%"
             style={{ border: 0 }}
             allowFullScreen
             loading="lazy"
-            referrerPolicy="no-referrer-when-downgrade"
             onLoad={() => setMapLoaded(true)}
             onError={() => setMapError(true)}
             title={`Map for ${propertyName}`}
             className={`transition-opacity duration-300 ${mapLoaded ? 'opacity-100' : 'opacity-0'}`}
           />
-        )}
+        ) : null}
       </div>
     </div>
   );
