@@ -5,15 +5,16 @@ const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
 const dotenv = require('dotenv');
+const path = require('path');
 const connectDB = require('./config/db');
 const { socketHandler } = require('./utils/socket');
 
-dotenv.config();
+dotenv.config({ path: path.join(__dirname, '.env') });
 connectDB();
 
 const app = express();
 app.set('trust proxy', 1);
-const server = http.createServer(app);
+let io = null;
 
 const allowedOrigins = process.env.NODE_ENV === 'production'
   ? (process.env.CLIENT_URL || process.env.CORS_ORIGIN || '')
@@ -21,17 +22,7 @@ const allowedOrigins = process.env.NODE_ENV === 'production'
       .map(origin => origin.trim())
       .filter(Boolean)
   : true;
-
-// Socket.io
-const io = new Server(server, {
-  cors: {
-    origin: allowedOrigins,
-    methods: ['GET', 'POST'],
-    credentials: true,
-  },
-});
 app.set('io', io);
-socketHandler(io);
 
 // Middleware
 app.use(helmet({ contentSecurityPolicy: false }));
@@ -48,7 +39,6 @@ app.get('/', (_, res) => {
 });
 
 // Serve uploaded files (images/videos) statically
-const path = require('path');
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Rate limiter
@@ -82,18 +72,38 @@ app.use((err, req, res, next) => {
   res.status(err.statusCode || 500).json({ success: false, message: err.message || 'Internal Server Error' });
 });
 
-const PORT = process.env.PORT || 5000;
-server.on('error', (err) => {
-  if (err.code === 'EADDRINUSE') {
-    console.error(`Port ${PORT} is already in use. Stop the existing backend process or set a different PORT in backend/.env.`);
+const startServer = () => {
+  const server = http.createServer(app);
+
+  // Socket.io needs a long-running Node server. Vercel serverless imports only
+  // the Express app, while local/dev hosts can still use realtime features.
+  io = new Server(server, {
+    cors: {
+      origin: allowedOrigins,
+      methods: ['GET', 'POST'],
+      credentials: true,
+    },
+  });
+  app.set('io', io);
+  socketHandler(io);
+
+  const PORT = process.env.PORT || 5000;
+  server.on('error', (err) => {
+    if (err.code === 'EADDRINUSE') {
+      console.error(`Port ${PORT} is already in use. Stop the existing backend process or set a different PORT in backend/.env.`);
+      process.exit(1);
+    }
+
+    console.error('Server failed to start:', err);
     process.exit(1);
-  }
+  });
 
-  console.error('Server failed to start:', err);
-  process.exit(1);
-});
+  server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+};
 
-server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+if (require.main === module) {
+  startServer();
+}
 
 // Handle unhandled promise rejections and uncaught exceptions gracefully
 process.on('unhandledRejection', (reason, promise) => {
@@ -104,4 +114,4 @@ process.on('uncaughtException', (err) => {
   process.exit(1);
 });
 
-module.exports = { app, io };
+module.exports = { app, io, startServer };
