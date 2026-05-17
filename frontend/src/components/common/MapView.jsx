@@ -15,6 +15,13 @@ function loadGoogleMaps(apiKey) {
       return;
     }
 
+    const previousAuthFailure = window.gm_authFailure;
+    window.gm_authFailure = () => {
+      previousAuthFailure?.();
+      googleMapsPromise = null;
+      reject(new Error('Google Maps authentication failed'));
+    };
+
     const script = document.createElement('script');
     script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places&v=weekly`;
     script.async = true;
@@ -129,6 +136,20 @@ export default function MapView({ address, propertyName, location, className = '
       userMarkerRef.current?.setMap?.(null);
     };
   }, [apiKey, useGoogleMap, coordinates, displayAddress, mapOptions, propertyName]);
+
+  useEffect(() => {
+    if (!useGoogleMap) return undefined;
+
+    const previousAuthFailure = window.gm_authFailure;
+    window.gm_authFailure = () => {
+      previousAuthFailure?.();
+      setForceFallbackMap(true);
+    };
+
+    return () => {
+      window.gm_authFailure = previousAuthFailure;
+    };
+  }, [useGoogleMap]);
 
   useEffect(() => {
     let cancelled = false;
