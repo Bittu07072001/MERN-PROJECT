@@ -22,6 +22,63 @@ const EMPTY_FORM = {
   shippingInfo:{ freeShipping:false, shippingCost:'', deliveryDays:'' },
 };
 
+const MAX_IMAGE_DIMENSION = 1600;
+const TARGET_IMAGE_BYTES = 700 * 1024;
+const MIN_IMAGE_DIMENSION = 900;
+
+function loadImage(file) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const objectUrl = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(objectUrl);
+      resolve(img);
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(objectUrl);
+      reject(new Error('Could not read image file'));
+    };
+    img.src = objectUrl;
+  });
+}
+
+async function prepareImageForUpload(file) {
+  if (file.type === 'image/gif') return file;
+
+  const img = await loadImage(file);
+  let scale = Math.min(1, MAX_IMAGE_DIMENSION / Math.max(img.width, img.height));
+  let width = Math.max(1, Math.round(img.width * scale));
+  let height = Math.max(1, Math.round(img.height * scale));
+
+  if (scale === 1 && file.size <= TARGET_IMAGE_BYTES) return file;
+
+  const canvas = document.createElement('canvas');
+  const ctx = canvas.getContext('2d');
+  const toJpegBlob = quality => {
+    canvas.width = width;
+    canvas.height = height;
+    ctx.drawImage(img, 0, 0, width, height);
+    return new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', quality));
+  };
+
+  let blob = null;
+  for (const quality of [0.82, 0.74, 0.66, 0.6]) {
+    blob = await toJpegBlob(quality);
+    if (!blob || blob.size <= TARGET_IMAGE_BYTES) break;
+
+    const longestSide = Math.max(width, height);
+    if (longestSide > MIN_IMAGE_DIMENSION) {
+      const nextScale = Math.max(MIN_IMAGE_DIMENSION / longestSide, 0.85);
+      width = Math.max(1, Math.round(width * nextScale));
+      height = Math.max(1, Math.round(height * nextScale));
+    }
+  }
+  if (!blob) return file;
+
+  const baseName = file.name.replace(/\.[^.]+$/, '') || 'property-image';
+  return new File([blob], `${baseName}.jpg`, { type: 'image/jpeg', lastModified: Date.now() });
+}
+
 function getYoutubeId(url) {
   const m = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&?/\s]{11})/);
   return m ? m[1] : null;
@@ -109,18 +166,35 @@ export default function ProductForm({ initial, onSubmit, loading, submitLabel = 
   const removeAttr = (i) => setForm(f => ({ ...f, attributes: f.attributes.filter((_,idx) => idx !== i) }));
   const setAttr    = (i,k,v) => setForm(f => ({ ...f, attributes: f.attributes.map((a,idx) => idx===i ? {...a,[k]:v} : a) }));
 
-  const handleImageUpload = (e) => {
+  const handleImageUpload = async (e) => {
     const files = Array.from(e.target.files);
     if (!files.length) return;
     const remaining = 5 - (form.images?.length || 0);
     const toAdd = files.slice(0, remaining);
-    const previews = toAdd.map(file => {
+    const preparedFiles = [];
+
+    for (const file of toAdd) {
+      try {
+        preparedFiles.push(await prepareImageForUpload(file));
+      } catch (err) {
+        toast.error(err.message || `Could not prepare ${file.name}`);
+      }
+    }
+
+    const previews = preparedFiles.map(file => {
       const blobUrl = URL.createObjectURL(file);
       pendingFiles.set(blobUrl, file);  // store File so we can upload before submit
       return { url: blobUrl, publicId: file.name };
     });
+
+    if (!previews.length) {
+      e.target.value = '';
+      return;
+    }
+
     setForm(f => ({ ...f, images: [...(f.images||[]), ...previews] }));
-    toast.success(`${previews.length} image(s) selected — will upload on save`);
+    toast.success(`${previews.length} image(s) selected - will upload on save`);
+    e.target.value = '';
   };
 
   const addVideoUrl = () => {
@@ -169,16 +243,22 @@ export default function ProductForm({ initial, onSubmit, loading, submitLabel = 
     if (blobImages.length > 0) {
       setUploading(true);
       try {
-        const fd = new FormData();
+        const uploaded = [];
         for (const img of blobImages) {
           const file = pendingFiles.get(img.url);
-          if (file) fd.append('images', file);
+          if (!file) continue;
+
+          const fd = new FormData();
+          fd.append('images', file);
+          const res = await api.post('/products/upload-images', fd, {
+            headers: { 'Content-Type': 'multipart/form-data' },
+          });
+          uploaded.push(...(res.data.images || []));
         }
-        const res = await api.post('/products/upload-images', fd, {
-          headers: { 'Content-Type': 'multipart/form-data' },
-        });
+        if (uploaded.length !== blobImages.length) {
+          throw new Error('Some images could not be uploaded. Please reselect them and try again.');
+        }
         // Replace blob entries with the server-returned URLs
-        const uploaded = res.data.images || [];
         let uploadIdx = 0;
         finalImages = finalImages.map(img => {
           if (img.url?.startsWith('blob:') && uploadIdx < uploaded.length) {

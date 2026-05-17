@@ -2,6 +2,7 @@ const mongoose = require('mongoose');
 const Product  = require('../models/Product');
 const { Review } = require('../models/index');
 const User     = require('../models/User');
+const { cloudinary } = require('../middleware/upload');
 
 exports.getProducts = async (req, res) => {
   try {
@@ -149,10 +150,39 @@ exports.getCategories = async (req, res) => {
 exports.uploadImages = async (req, res) => {
   try {
     if (!req.files?.length) return res.status(400).json({ success: false, message: 'No images uploaded' });
-    const images = req.files.map(f => ({
-      url: f.secure_url || f.url || f.path,
-      publicId: f.public_id || f.filename,
-    }));
+
+    const hasCloudinaryConfig = Boolean(
+      process.env.CLOUDINARY_CLOUD_NAME &&
+      process.env.CLOUDINARY_API_KEY &&
+      process.env.CLOUDINARY_API_SECRET
+    );
+    if (!hasCloudinaryConfig) {
+      return res.status(500).json({
+        success: false,
+        message: 'Image upload is not configured on the server. Add Cloudinary environment variables in Vercel.',
+      });
+    }
+
+    const uploadFile = file => new Promise((resolve, reject) => {
+      const stream = cloudinary.uploader.upload_stream(
+        {
+          folder: 'homeconnect/properties',
+          resource_type: 'image',
+          transformation: [{ quality: 'auto:good', fetch_format: 'auto' }],
+        },
+        (error, result) => {
+          if (error) return reject(error);
+          resolve({
+            url: result.secure_url,
+            publicId: result.public_id,
+          });
+        }
+      );
+
+      stream.end(file.buffer);
+    });
+
+    const images = await Promise.all(req.files.map(uploadFile));
     res.json({ success: true, images });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
