@@ -193,6 +193,7 @@ exports.login = async (req, res) => {
 exports.googleAuth = async (req, res) => {
   try {
     const { credential } = req.body;
+    const hasRequestedRoles = Array.isArray(req.body.roles) || Boolean(req.body.role);
     const requestedRoles = Array.isArray(req.body.roles) ? req.body.roles : (req.body.role ? [req.body.role] : ['customer']);
     const allowedRoles = ['customer', 'seller', 'admin'];
     const userRoles = [...new Set(requestedRoles.filter(r => allowedRoles.includes(r)))];
@@ -239,13 +240,23 @@ exports.googleAuth = async (req, res) => {
       if (!user.isActive) {
         return res.status(403).json({ success: false, message: 'Account deactivated. Contact support.' });
       }
+      const existingRoles = user.roles && user.roles.length > 0 ? user.roles : [user.role || 'customer'];
+      const mergedRoles = hasRequestedRoles
+        ? [...new Set([...existingRoles, ...userRoles])]
+        : existingRoles;
+
+      user.roles = mergedRoles;
+      if (hasRequestedRoles && userRoles.length === 1) user.role = userRoles[0];
       user.googleId = user.googleId || profile.sub || '';
       user.authProvider = user.authProvider === 'local' ? 'local' : 'google';
       user.avatar = user.avatar || profile.picture || '';
       user.isEmailVerified = true;
     }
 
-    const loginRoles = getLoginRoles(user.roles && user.roles.length > 0 ? user.roles : [user.role]);
+    const loginRoles = hasRequestedRoles
+      ? userRoles
+      : getLoginRoles(user.roles && user.roles.length > 0 ? user.roles : [user.role]);
+
     if (loginRoles.length > 1) {
       await user.save();
       return res.json({
