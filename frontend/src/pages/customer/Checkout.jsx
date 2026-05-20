@@ -29,6 +29,20 @@ const getItemPrice = (product) => (
   product?.discountPrice > 0 ? product.discountPrice : product?.price || 0
 );
 
+const RAZORPAY_MAX_AMOUNT = 500000;
+const BOOKING_PERCENTAGE = 0.01;
+const MIN_BOOKING_AMOUNT = 1000;
+
+const getOnlineBookingAmount = (value = 0) => {
+  const total = Math.max(0, Number(value) || 0);
+  if (total <= RAZORPAY_MAX_AMOUNT) return Math.round(total);
+
+  return Math.round(Math.min(
+    RAZORPAY_MAX_AMOUNT,
+    Math.max(MIN_BOOKING_AMOUNT, total * BOOKING_PERCENTAGE),
+  ));
+};
+
 export default function Checkout() {
   const { user } = useAuthStore();
   const { cart, fetch, total, clear } = useCartStore();
@@ -72,6 +86,7 @@ export default function Checkout() {
   const subtotal = total();
   const serviceFee = subtotal > 500 ? 0 : 50;
   const grand = Math.max(0, subtotal + serviceFee - discount);
+  const onlineBookingAmount = getOnlineBookingAmount(grand);
 
   const validationErrors = useMemo(() => {
     const errors = [];
@@ -136,13 +151,19 @@ export default function Checkout() {
         return;
       }
 
-      const { data: rp } = await api.post('/payments/razorpay/create', { amount: grand });
+      const { data: rp } = await api.post('/payments/razorpay/create', {
+        orderId: orderData.order._id,
+      });
+      if (!rp.keyId || !rp.order?.id) {
+        throw new Error('Payment gateway returned an incomplete order');
+      }
+
       const options = {
         key: rp.keyId,
         amount: rp.order.amount,
         currency: 'INR',
         name: 'HomeConnect',
-        description: `Booking #${orderData.order.orderNumber}`,
+        description: `Booking payment #${orderData.order.orderNumber}`,
         order_id: rp.order.id,
         handler: async (response) => {
           try {
@@ -175,7 +196,7 @@ export default function Checkout() {
         document.body.appendChild(script);
       }
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Checkout failed');
+      toast.error(err.response?.data?.message || err.message || 'Checkout failed');
     } finally {
       setLoading(false);
     }
@@ -400,6 +421,12 @@ export default function Checkout() {
                 <span>Total</span>
                 <span>{formatMoney(grand)}</span>
               </div>
+              {method === 'razorpay' && onlineBookingAmount < grand && (
+                <div className="flex justify-between text-indigo-600 dark:text-indigo-400 font-semibold">
+                  <span>Payable now</span>
+                  <span>{formatMoney(onlineBookingAmount)}</span>
+                </div>
+              )}
             </div>
 
             <div className="rounded-lg bg-indigo-50 dark:bg-indigo-950/40 p-3 flex gap-2 text-xs text-indigo-700 dark:text-indigo-300">
@@ -424,7 +451,7 @@ export default function Checkout() {
               ) : (
                 <>
                   <BadgeIndianRupee className="w-4 h-4" />
-                  Pay Now
+                  Pay {formatMoney(onlineBookingAmount)} Now
                 </>
               )}
             </button>

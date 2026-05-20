@@ -2,32 +2,86 @@ const crypto  = require('crypto');
 const Order   = require('../models/Order');
 const { Coupon } = require('../models/index');
 
+const RAZORPAY_MAX_AMOUNT = 500000;
+const BOOKING_PERCENTAGE = 0.01;
+const MIN_BOOKING_AMOUNT = 1000;
+
+const getOnlineBookingAmount = (total = 0) => {
+  const normalizedTotal = Math.max(0, Number(total) || 0);
+  if (normalizedTotal <= RAZORPAY_MAX_AMOUNT) return Math.round(normalizedTotal);
+
+  return Math.round(Math.min(
+    RAZORPAY_MAX_AMOUNT,
+    Math.max(MIN_BOOKING_AMOUNT, normalizedTotal * BOOKING_PERCENTAGE),
+  ));
+};
+
 // ─── RAZORPAY ─────────────────────────────────────────────────────────────────
 exports.createRazorpayOrder = async (req, res) => {
   try {
+    if (!process.env.RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET) {
+      return res.status(503).json({ success: false, message: 'Razorpay is not configured on the server' });
+    }
+
     const Razorpay = require('razorpay');
     const razorpay = new Razorpay({
       key_id:     process.env.RAZORPAY_KEY_ID,
       key_secret: process.env.RAZORPAY_KEY_SECRET,
     });
 
-    const { amount } = req.body; // amount in paise
+    const { amount, orderId } = req.body;
+    let payableAmount = Number(amount);
+    let appOrder = null;
+
+    if (orderId) {
+      appOrder = await Order.findOne({ _id: orderId, user: req.user._id });
+      if (!appOrder) return res.status(404).json({ success: false, message: 'Order not found' });
+      if (appOrder.paymentStatus === 'paid')
+        return res.status(400).json({ success: false, message: 'Order is already paid' });
+
+      payableAmount = getOnlineBookingAmount(appOrder.total);
+    }
+
+    if (!Number.isFinite(payableAmount) || payableAmount <= 0) {
+      return res.status(400).json({ success: false, message: 'Invalid payment amount' });
+    }
+
     const options = {
-      amount:   Math.round(amount * 100),
+      amount:   Math.round(payableAmount * 100),
       currency: 'INR',
-      receipt:  'order_' + Date.now(),
+      receipt:  `order_${appOrder?._id || Date.now()}`.slice(0, 40),
     };
 
     const razorpayOrder = await razorpay.orders.create(options);
-    res.json({ success: true, order: razorpayOrder, keyId: process.env.RAZORPAY_KEY_ID });
+
+    if (appOrder) {
+      appOrder.paymentDetails.razorpayOrderId = razorpayOrder.id;
+      appOrder.paymentDetails.amountPaid = payableAmount;
+      await appOrder.save();
+    }
+
+    res.json({
+      success: true,
+      order: razorpayOrder,
+      keyId: process.env.RAZORPAY_KEY_ID,
+      payableAmount,
+    });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    res.status(err.statusCode || 500).json({
+      success: false,
+      message: err.error?.description || err.message || 'Unable to create Razorpay order',
+    });
   }
 };
 
 exports.verifyRazorpayPayment = async (req, res) => {
   try {
     const { razorpay_order_id, razorpay_payment_id, razorpay_signature, orderId } = req.body;
+
+    const existingOrder = await Order.findOne({ _id: orderId, user: req.user._id });
+    if (!existingOrder) return res.status(404).json({ success: false, message: 'Order not found' });
+    if (existingOrder.paymentDetails?.razorpayOrderId !== razorpay_order_id)
+      return res.status(400).json({ success: false, message: 'Payment order mismatch' });
 
     const body      = razorpay_order_id + '|' + razorpay_payment_id;
     const expected  = crypto.createHmac('sha256', process.env.RAZORPAY_KEY_SECRET)

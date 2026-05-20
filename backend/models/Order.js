@@ -26,6 +26,7 @@ const orderSchema = new mongoose.Schema({
   paymentDetails: {
     razorpayOrderId:   String,
     razorpayPaymentId: String,
+    amountPaid:        Number,
     paidAt:            Date,
   },
   orderStatus: {
