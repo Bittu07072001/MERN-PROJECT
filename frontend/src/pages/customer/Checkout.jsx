@@ -183,6 +183,21 @@ export default function Checkout() {
           email: user?.email,
           contact: user?.phone || addr.phone,
         },
+        method: {
+          upi: true,
+          card: true,
+          netbanking: true,
+          wallet: true,
+          paylater: true,
+        },
+        config: {
+          display: {
+            sequence: ['upi', 'card', 'netbanking', 'wallet', 'paylater'],
+            preferences: {
+              show_default_blocks: true,
+            },
+          },
+        },
         theme: { color: '#4f46e5' },
       };
 
