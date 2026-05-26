@@ -77,12 +77,6 @@ exports.createOrder = async (req, res) => {
     await Cart.findOneAndUpdate({ user: req.user._id }, { items: [] });
 
     const io = req.app.get('io');
-    await notify(req.user._id, {
-      title: 'Order Placed! 🎉',
-      message: `Your order #${order.orderNumber} has been placed successfully.`,
-      type: 'order', link: `/orders/${order._id}`,
-    }, io);
-
     if (io) io.to('admin').emit('admin:newOrder', {
       _id: order._id,
       orderNumber: order.orderNumber,

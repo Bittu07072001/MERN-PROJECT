@@ -1,6 +1,6 @@
 const crypto  = require('crypto');
 const Order   = require('../models/Order');
-const { Coupon } = require('../models/index');
+const { Coupon, Notification } = require('../models/index');
 const { sendEmiPaymentEmail } = require('../utils/email');
 
 const RAZORPAY_MAX_AMOUNT = 500000;
@@ -30,6 +30,12 @@ const getEstimatedEmiAmount = (principal = 0) => {
   const amount = Math.max(0, Number(principal) || 0);
   if (!amount) return 0;
   return Math.round((amount * monthlyRate * ((1 + monthlyRate) ** months)) / (((1 + monthlyRate) ** months) - 1));
+};
+
+const notify = async (userId, data, io) => {
+  const notif = await Notification.create({ user: userId, ...data });
+  if (io) io.to(`user_${userId}`).emit('notification', notif);
+  return notif;
 };
 
 // ─── RAZORPAY ─────────────────────────────────────────────────────────────────
@@ -96,6 +102,9 @@ exports.verifyRazorpayPayment = async (req, res) => {
 
     const existingOrder = await Order.findOne({ _id: orderId, user: req.user._id });
     if (!existingOrder) return res.status(404).json({ success: false, message: 'Order not found' });
+    if (existingOrder.paymentStatus === 'paid') {
+      return res.json({ success: true, order: existingOrder });
+    }
     if (existingOrder.paymentDetails?.razorpayOrderId !== razorpay_order_id)
       return res.status(400).json({ success: false, message: 'Payment order mismatch' });
 
@@ -113,6 +122,14 @@ exports.verifyRazorpayPayment = async (req, res) => {
       'paymentDetails.paidAt':            new Date(),
       orderStatus: 'confirmed',
     }, { new: true }).populate('user', 'name email');
+
+    const io = req.app.get('io');
+    await notify(order.user._id || req.user._id, {
+      title: 'Order Placed!',
+      message: `Your order #${order.orderNumber} has been placed successfully.`,
+      type: 'order',
+      link: `/orders/${order._id}`,
+    }, io);
 
     if (order.paymentPlan === 'emi' && order.user?.email) {
       const paidAt = order.paymentDetails.paidAt || new Date();
