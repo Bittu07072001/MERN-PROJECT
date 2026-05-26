@@ -1,7 +1,7 @@
 // ProductDetail.jsx
 import { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { Heart, ShoppingCart, Star, Shield, ChevronLeft, ChevronRight, Package, Minus, Plus, Play, CalendarCheck, TrendingUp, PenLine, ThumbsUp, CheckCircle2, MessageSquare } from 'lucide-react';
+import { BadgeIndianRupee, Calculator, Heart, ShoppingCart, Star, Shield, ChevronLeft, ChevronRight, Minus, Plus, Play, CalendarCheck, TrendingUp, PenLine, ThumbsUp, CheckCircle2, MessageSquare } from 'lucide-react';
 import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
 import api from '../../utils/api';
@@ -71,6 +71,12 @@ export default function ProductDetail() {
   const discount = product.discountPrice > 0 ? Math.round(((product.price - product.discountPrice) / product.price) * 100) : 0;
   const inWish   = user ? isInWishlist(product._id) : false;
   const hasVideos = product.videos?.length > 0;
+  const emiRate = 0.085;
+  const emiMonths = 240;
+  const downPayment = Math.round(price * 0.2);
+  const loanAmount = Math.max(0, price - downPayment);
+  const monthlyRate = emiRate / 12;
+  const estimatedEmi = Math.round((loanAmount * monthlyRate * ((1 + monthlyRate) ** emiMonths)) / (((1 + monthlyRate) ** emiMonths) - 1));
   const formatLocation = (value) => {
     if (!value) return '';
     if (typeof value === 'string') return value;
@@ -130,6 +136,17 @@ export default function ProductDetail() {
     const ok = await add(product._id, qty);
     setAdding(false);
     if (ok) navigate('/cart');
+  };
+
+  const handleEmiCheckout = async () => {
+    if (!user) return navigate('/login');
+    setAdding(true);
+    const ok = await add(product._id, qty);
+    setAdding(false);
+    if (ok) {
+      toast.success('EMI option selected. Continue with online payment at checkout.');
+      navigate('/checkout', { state: { preferredPayment: 'razorpay', highlightEmi: true } });
+    }
   };
 
   const handleWishlist = async () => {
@@ -250,6 +267,43 @@ export default function ProductDetail() {
               <span className="text-xl text-gray-400 line-through">₹{product.price.toLocaleString()}</span>
               <span className="badge bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300">Save ₹{(product.price - price).toLocaleString()}</span>
             </>}
+          </div>
+
+          {/* EMI option */}
+          <div className="rounded-2xl border border-indigo-100 dark:border-indigo-800/60 bg-indigo-50/70 dark:bg-indigo-950/30 p-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-start gap-3">
+                <span className="w-10 h-10 rounded-xl bg-white dark:bg-gray-900 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shadow-sm flex-shrink-0">
+                  <Calculator className="w-5 h-5" />
+                </span>
+                <div>
+                  <p className="text-sm font-black text-gray-900 dark:text-white">
+                    EMI starts at ₹{estimatedEmi.toLocaleString()}/month
+                  </p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                    Estimated for 20% down payment, 20 years, 8.5% p.a.
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={handleEmiCheckout}
+                disabled={adding || product.stock <= 0}
+                className="btn-secondary text-sm py-2 px-4 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <BadgeIndianRupee className="w-4 h-4" />
+                Buy with EMI
+              </button>
+            </div>
+            <div className="grid grid-cols-2 gap-2 mt-3 text-xs">
+              <div className="rounded-xl bg-white/80 dark:bg-gray-900/60 p-2.5">
+                <span className="block text-gray-500 dark:text-gray-400">Down payment</span>
+                <span className="font-bold text-gray-900 dark:text-white">₹{downPayment.toLocaleString()}</span>
+              </div>
+              <div className="rounded-xl bg-white/80 dark:bg-gray-900/60 p-2.5">
+                <span className="block text-gray-500 dark:text-gray-400">Loan amount</span>
+                <span className="font-bold text-gray-900 dark:text-white">₹{loanAmount.toLocaleString()}</span>
+              </div>
+            </div>
           </div>
 
           {/* Stock */}

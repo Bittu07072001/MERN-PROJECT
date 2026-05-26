@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   BadgeIndianRupee,
   CheckCircle2,
@@ -47,10 +47,11 @@ export default function Checkout() {
   const { user } = useAuthStore();
   const { cart, fetch, total, clear } = useCartStore();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const [loading, setLoading] = useState(false);
   const [cartLoading, setCartLoading] = useState(true);
-  const [method, setMethod] = useState('razorpay');
+  const [method, setMethod] = useState(location.state?.preferredPayment || 'razorpay');
   const [coupon, setCoupon] = useState('');
   const [discount, setDiscount] = useState(0);
   const [couponApplied, setCouponApplied] = useState(null);
@@ -186,13 +187,14 @@ export default function Checkout() {
         method: {
           upi: true,
           card: true,
+          emi: true,
           netbanking: true,
           wallet: true,
           paylater: true,
         },
         config: {
           display: {
-            sequence: ['upi', 'card', 'netbanking', 'wallet', 'paylater'],
+            sequence: ['upi', 'card', 'emi', 'netbanking', 'wallet', 'paylater'],
             preferences: {
               show_default_blocks: true,
             },
@@ -317,7 +319,7 @@ export default function Checkout() {
                   value: 'razorpay',
                   label: 'Online Payment',
                   icon: WalletCards,
-                  desc: 'Cards, UPI, wallets and net banking',
+                  desc: 'Cards, UPI, EMI, wallets and net banking',
                 },
                 {
                   value: 'cod',
@@ -356,6 +358,11 @@ export default function Checkout() {
                 );
               })}
             </div>
+            {location.state?.highlightEmi && method === 'razorpay' && (
+              <p className="mt-3 rounded-lg bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-100 dark:border-emerald-800/50 px-3 py-2 text-xs text-emerald-700 dark:text-emerald-300 font-medium">
+                EMI is available inside online payment. Choose EMI in the Razorpay payment window.
+              </p>
+            )}
           </section>
 
           <section className="card p-5">
