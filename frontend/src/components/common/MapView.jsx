@@ -51,6 +51,10 @@ function getOsmEmbedUrl({ lat, lng }) {
   return `https://www.openstreetmap.org/export/embed.html?bbox=${bbox}&layer=mapnik&marker=${lat},${lng}`;
 }
 
+function getQueryEmbedUrl(query) {
+  return `https://maps.google.com/maps?q=${query}&z=14&output=embed`;
+}
+
 export default function MapView({ address, propertyName, location, className = '' }) {
   const mapRef = useRef(null);
   const mapInstanceRef = useRef(null);
@@ -69,7 +73,12 @@ export default function MapView({ address, propertyName, location, className = '
   const coordinates = useMemo(() => toCoordinatePair(location), [location?.lat, location?.lng]);
   const displayAddress = address || [location?.address, location?.city, location?.state, location?.pincode].filter(Boolean).join(', ');
   const query = encodeURIComponent(displayAddress || propertyName || 'India');
-  const fallbackMapUrl = fallbackCoordinates ? getOsmEmbedUrl(fallbackCoordinates) : '';
+  const fallbackQuery = encodeURIComponent(
+    fallbackCoordinates
+      ? `${fallbackCoordinates.lat},${fallbackCoordinates.lng}`
+      : displayAddress || propertyName || 'India'
+  );
+  const fallbackMapUrl = fallbackCoordinates ? getOsmEmbedUrl(fallbackCoordinates) : getQueryEmbedUrl(fallbackQuery);
   const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${query}`;
 
   const mapOptions = useMemo(() => ({
@@ -159,10 +168,9 @@ export default function MapView({ address, propertyName, location, className = '
 
       setMapLoaded(false);
       setMapError(false);
-      setFallbackCoordinates(null);
+      setFallbackCoordinates(coordinates);
 
       if (coordinates) {
-        setFallbackCoordinates(coordinates);
         return;
       }
 
@@ -196,7 +204,7 @@ export default function MapView({ address, propertyName, location, className = '
           setMapError(true);
         }
       } catch {
-        if (!cancelled) setMapError(true);
+        if (!cancelled) setMapError(false);
       } finally {
         if (!cancelled) setFallbackLoading(false);
       }
@@ -266,11 +274,11 @@ export default function MapView({ address, propertyName, location, className = '
       </div>
 
       <div className="relative h-64 bg-gray-100 dark:bg-gray-700">
-        {(!mapLoaded || fallbackLoading) && !mapError && (
+        {(!mapLoaded && !fallbackMapUrl) || (fallbackLoading && !fallbackMapUrl) ? (
           <div className="absolute inset-0 flex items-center justify-center">
             <div className="w-8 h-8 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin" />
           </div>
-        )}
+        ) : null}
 
         {mapError ? (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-gray-400">
@@ -298,7 +306,7 @@ export default function MapView({ address, propertyName, location, className = '
             onLoad={() => setMapLoaded(true)}
             onError={() => setMapError(true)}
             title={`Map for ${propertyName}`}
-            className={`transition-opacity duration-300 ${mapLoaded ? 'opacity-100' : 'opacity-0'}`}
+            className="opacity-100"
           />
         ) : null}
       </div>
