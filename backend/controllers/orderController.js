@@ -10,10 +10,14 @@ const notify = async (userId, data, io) => {
 
 exports.createOrder = async (req, res) => {
   try {
-    const { items, shippingAddress, paymentMethod, couponCode, notes } = req.body;
+    const { items, shippingAddress, paymentMethod, paymentPlan, couponCode, notes } = req.body;
 
     if (!items || items.length === 0)
       return res.status(400).json({ success: false, message: 'No items in order' });
+    if (items.length !== 1 || Number(items[0].quantity) !== 1)
+      return res.status(400).json({ success: false, message: 'Only one property can be purchased at a time' });
+    if (paymentMethod !== 'razorpay' || paymentPlan !== 'emi')
+      return res.status(400).json({ success: false, message: 'Properties can only be purchased using EMI payment' });
 
     let subtotal   = 0;
     const orderItems = [];
@@ -53,7 +57,8 @@ exports.createOrder = async (req, res) => {
 
     const order = await Order.create({
       user: req.user._id, items: orderItems, shippingAddress,
-      paymentMethod, subtotal, shippingCost, discount,
+      paymentMethod, paymentPlan: paymentMethod === 'razorpay' && paymentPlan === 'emi' ? 'emi' : 'full',
+      subtotal, shippingCost, discount,
       couponCode: couponCode?.toUpperCase(), total, notes,
       statusHistory: [{ status: 'placed', message: 'Order placed successfully', updatedBy: req.user._id }],
     });

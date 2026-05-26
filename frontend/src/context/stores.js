@@ -172,7 +172,7 @@ export const useCartStore = create((set, get) => ({
     if (!cart?.items) return 0;
     return cart.items.reduce((sum, item) => {
       const price = item.product?.discountPrice > 0 ? item.product.discountPrice : item.product?.price || 0;
-      return sum + price * item.quantity;
+      return sum + price;
     }, 0);
   },
 }));

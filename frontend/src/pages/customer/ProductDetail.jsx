@@ -1,7 +1,7 @@
 // ProductDetail.jsx
 import { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { BadgeIndianRupee, Calculator, Heart, ShoppingCart, Star, Shield, ChevronLeft, ChevronRight, Minus, Plus, Play, CalendarCheck, TrendingUp, PenLine, ThumbsUp, CheckCircle2, MessageSquare } from 'lucide-react';
+import { BadgeIndianRupee, Calculator, Heart, Star, Shield, ChevronLeft, ChevronRight, Play, CalendarCheck, TrendingUp, PenLine, ThumbsUp, CheckCircle2, MessageSquare } from 'lucide-react';
 import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
 import api from '../../utils/api';
@@ -24,7 +24,7 @@ export default function ProductDetail() {
   const [related, setRelated]   = useState([]);
   const [loading, setLoading]   = useState(true);
   const [imgIdx,  setImgIdx]    = useState(0);
-  const [qty,     setQty]       = useState(1);
+  const qty = 1;
   const [adding,  setAdding]    = useState(false);
   const [tab,     setTab]       = useState('description');
   const [activeVideo, setActiveVideo] = useState(0);
@@ -86,7 +86,7 @@ export default function ProductDetail() {
   const handleAddToCart = async () => {
     if (!user) return toast.error('Please login');
     setAdding(true);
-    const ok = await add(product._id, qty);
+    const ok = await add(product._id, 1);
     if (ok) toast.success(`${qty}x ${product.name.slice(0, 20)}… added to cart!`);
     setAdding(false);
   };
@@ -133,7 +133,7 @@ export default function ProductDetail() {
   const handleBuyNow = async () => {
     if (!user) return navigate('/login');
     setAdding(true);
-    const ok = await add(product._id, qty);
+    const ok = await add(product._id, 1);
     setAdding(false);
     if (ok) navigate('/cart');
   };
@@ -141,7 +141,7 @@ export default function ProductDetail() {
   const handleEmiCheckout = async () => {
     if (!user) return navigate('/login');
     setAdding(true);
-    const ok = await add(product._id, qty);
+    const ok = await add(product._id, 1);
     setAdding(false);
     if (ok) {
       toast.success('EMI option selected. Continue with online payment at checkout.');
@@ -342,37 +342,8 @@ export default function ProductDetail() {
             </button>
           )}
 
-          {/* Quantity */}
-          {product.stock > 0 && (
-            <div className="flex items-center gap-3">
-              <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">Qty:</span>
-              <div className="flex items-center border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden">
-                <button onClick={() => setQty(q => Math.max(1, q - 1))} className="px-3 py-2 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
-                  <Minus className="w-4 h-4" />
-                </button>
-                <span className="px-4 py-2 font-bold text-gray-900 dark:text-white border-x border-gray-200 dark:border-gray-700 min-w-[3rem] text-center">{qty}</span>
-                <button onClick={() => setQty(q => Math.min(product.stock, q + 1))} className="px-3 py-2 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
-                  <Plus className="w-4 h-4" />
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* CTA buttons */}
-          <div className="flex gap-3">
-            {product.stock > 0 ? (
-              <>
-                <button onClick={handleAddToCart} disabled={adding} className="flex-1 btn-secondary flex items-center justify-center gap-2 text-sm">
-                  {adding ? <div className="w-4 h-4 border-2 border-gray-500 border-t-transparent rounded-full animate-spin" /> : <ShoppingCart className="w-4 h-4" />}
-                  Add to Cart
-                </button>
-                <button onClick={handleBuyNow} disabled={adding} className="flex-1 btn-primary flex items-center justify-center gap-2 text-sm">
-                  Buy Now
-                </button>
-              </>
-            ) : (
-              <button disabled className="flex-1 btn-secondary opacity-50 cursor-not-allowed">Out of Stock</button>
-            )}
+          {/* Wishlist */}
+          <div className="flex justify-end">
             <button onClick={handleWishlist}
               className={`w-11 h-11 rounded-xl border flex items-center justify-center transition-all ${inWish ? 'bg-rose-500 border-rose-500 text-white' : 'border-gray-300 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:border-rose-300 hover:text-rose-500'}`}>
               <Heart className={`w-5 h-5 ${inWish ? 'fill-white' : ''}`} />

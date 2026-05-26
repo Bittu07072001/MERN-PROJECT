@@ -9,6 +9,9 @@ exports.getCart = async (req, res) => {
     if (!cart) cart = await Cart.create({ user: req.user._id, items: [] });
     // Remove items whose products are inactive or not yet approved
     cart.items = cart.items.filter(i => i.product?.isActive && i.product?.approvalStatus === 'approved');
+    cart.items.splice(1);
+    cart.items.forEach(item => { item.quantity = 1; });
+    await cart.save();
     res.json({ success: true, cart });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
@@ -17,7 +20,7 @@ exports.getCart = async (req, res) => {
 
 exports.addToCart = async (req, res) => {
   try {
-    const { productId, quantity = 1 } = req.body;
+    const { productId } = req.body;
     const product = await Product.findById(productId);
     if (!product || !product.isActive || product.approvalStatus !== 'approved')
       return res.status(404).json({ success: false, message: 'Product not found or not available' });
@@ -25,12 +28,7 @@ exports.addToCart = async (req, res) => {
     let cart = await Cart.findOne({ user: req.user._id });
     if (!cart) cart = await Cart.create({ user: req.user._id, items: [] });
 
-    const idx = cart.items.findIndex(i => i.product.toString() === productId);
-    if (idx > -1) {
-      cart.items[idx].quantity = Math.min(cart.items[idx].quantity + quantity, product.stock);
-    } else {
-      cart.items.push({ product: productId, quantity: Math.min(quantity, product.stock) });
-    }
+    cart.items = [{ product: productId, quantity: 1 }];
 
     await cart.save();
     await cart.populate('items.product', 'name price discountPrice images stock');
@@ -50,7 +48,7 @@ exports.updateCartItem = async (req, res) => {
     if (idx === -1) return res.status(404).json({ success: false, message: 'Item not in cart' });
 
     if (quantity <= 0) cart.items.splice(idx, 1);
-    else cart.items[idx].quantity = quantity;
+    else cart.items[idx].quantity = 1;
 
     await cart.save();
     await cart.populate('items.product', 'name price discountPrice images stock');

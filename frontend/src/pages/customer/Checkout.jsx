@@ -1,11 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import {
   BadgeIndianRupee,
   CheckCircle2,
   CreditCard,
   Home,
-  Landmark,
   Loader2,
   MapPin,
   ShieldCheck,
@@ -47,11 +46,11 @@ export default function Checkout() {
   const { user } = useAuthStore();
   const { cart, fetch, total, clear } = useCartStore();
   const navigate = useNavigate();
-  const location = useLocation();
 
   const [loading, setLoading] = useState(false);
   const [cartLoading, setCartLoading] = useState(true);
-  const [method, setMethod] = useState(location.state?.preferredPayment || 'razorpay');
+  const method = 'razorpay';
+  const paymentPlan = 'emi';
   const [coupon, setCoupon] = useState('');
   const [discount, setDiscount] = useState(0);
   const [couponApplied, setCouponApplied] = useState(null);
@@ -83,7 +82,7 @@ export default function Checkout() {
     }));
   }, [user]);
 
-  const cartItems = cart?.items || [];
+  const cartItems = (cart?.items || []).slice(0, 1);
   const subtotal = total();
   const serviceFee = subtotal > 500 ? 0 : 50;
   const grand = Math.max(0, subtotal + serviceFee - discount);
@@ -132,9 +131,9 @@ export default function Checkout() {
     if (validationErrors.length) return toast.error(validationErrors[0]);
 
     setLoading(true);
-    const items = cartItems.map((item) => ({
+    const items = cartItems.slice(0, 1).map((item) => ({
       product: item.product._id,
-      quantity: item.quantity,
+      quantity: 1,
     }));
 
     try {
@@ -142,6 +141,7 @@ export default function Checkout() {
         items,
         shippingAddress: addr,
         paymentMethod: method,
+        paymentPlan,
         couponCode: couponApplied?.code,
       });
 
@@ -313,56 +313,20 @@ export default function Checkout() {
               <CreditCard className="w-4 h-4 text-indigo-500" />
               Payment Method
             </h2>
-            <div className="grid sm:grid-cols-2 gap-3">
-              {[
-                {
-                  value: 'razorpay',
-                  label: 'Online Payment',
-                  icon: WalletCards,
-                  desc: 'Cards, UPI, EMI, wallets and net banking',
-                },
-                {
-                  value: 'cod',
-                  label: 'Pay Later',
-                  icon: Landmark,
-                  desc: 'Confirm now and pay after seller approval',
-                },
-              ].map((option) => {
-                const Icon = option.icon;
-                const active = method === option.value;
-
-                return (
-                  <button
-                    key={option.value}
-                    type="button"
-                    onClick={() => setMethod(option.value)}
-                    className={`relative p-4 rounded-lg border-2 text-left transition-all ${
-                      active
-                        ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-950/50'
-                        : 'border-gray-200 dark:border-gray-700 hover:border-indigo-300'
-                    }`}
-                  >
-                    <div className="flex items-start gap-3">
-                      <span className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-                        active ? 'bg-indigo-600 text-white' : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300'
-                      }`}>
-                        <Icon className="w-5 h-5" />
-                      </span>
-                      <span className="min-w-0">
-                        <span className="block font-semibold text-sm text-gray-900 dark:text-white">{option.label}</span>
-                        <span className="block text-xs text-gray-500 dark:text-gray-400 mt-0.5">{option.desc}</span>
-                      </span>
-                    </div>
-                    {active && <CheckCircle2 className="w-4 h-4 text-indigo-600 absolute right-4 bottom-4" />}
-                  </button>
-                );
-              })}
-            </div>
-            {location.state?.highlightEmi && method === 'razorpay' && (
-              <p className="mt-3 rounded-lg bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-100 dark:border-emerald-800/50 px-3 py-2 text-xs text-emerald-700 dark:text-emerald-300 font-medium">
-                EMI is available inside online payment. Choose EMI in the Razorpay payment window.
+            <div className="rounded-lg border-2 border-indigo-500 bg-indigo-50 dark:bg-indigo-950/50 p-4">
+              <div className="flex items-start gap-3">
+                <span className="w-10 h-10 rounded-lg bg-indigo-600 text-white flex items-center justify-center">
+                  <WalletCards className="w-5 h-5" />
+                </span>
+                <span className="min-w-0">
+                  <span className="block font-semibold text-sm text-gray-900 dark:text-white">EMI Payment</span>
+                  <span className="block text-xs text-gray-500 dark:text-gray-400 mt-0.5">Cards, UPI and bank EMI through Razorpay</span>
+                </span>
+              </div>
+              <p className="mt-3 text-xs text-emerald-700 dark:text-emerald-300 font-medium">
+                Buyers can purchase one property at a time using EMI. After payment succeeds, EMI details will be emailed to your account.
               </p>
-            )}
+            </div>
           </section>
 
           <section className="card p-5">
@@ -412,10 +376,10 @@ export default function Checkout() {
                     />
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-semibold text-gray-900 dark:text-white line-clamp-1">{product.name}</p>
-                      <p className="text-xs text-gray-500 dark:text-gray-400">Quantity: {item.quantity}</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">Quantity: 1</p>
                     </div>
                     <p className="text-sm font-bold text-gray-900 dark:text-white whitespace-nowrap">
-                      {formatMoney(price * item.quantity)}
+                      {formatMoney(price)}
                     </p>
                   </div>
                 );

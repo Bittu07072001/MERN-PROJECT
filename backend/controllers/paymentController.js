@@ -1,6 +1,7 @@
 const crypto  = require('crypto');
 const Order   = require('../models/Order');
 const { Coupon } = require('../models/index');
+const { sendEmiPaymentEmail } = require('../utils/email');
 
 const RAZORPAY_MAX_AMOUNT = 500000;
 const BOOKING_PERCENTAGE = 0.01;
@@ -14,6 +15,21 @@ const getOnlineBookingAmount = (total = 0) => {
     RAZORPAY_MAX_AMOUNT,
     Math.max(MIN_BOOKING_AMOUNT, normalizedTotal * BOOKING_PERCENTAGE),
   ));
+};
+
+const addMonths = (date, months) => {
+  const next = new Date(date);
+  next.setMonth(next.getMonth() + months);
+  return next;
+};
+
+const getEstimatedEmiAmount = (principal = 0) => {
+  const annualRate = 0.085;
+  const months = 240;
+  const monthlyRate = annualRate / 12;
+  const amount = Math.max(0, Number(principal) || 0);
+  if (!amount) return 0;
+  return Math.round((amount * monthlyRate * ((1 + monthlyRate) ** months)) / (((1 + monthlyRate) ** months) - 1));
 };
 
 // ─── RAZORPAY ─────────────────────────────────────────────────────────────────
@@ -96,7 +112,25 @@ exports.verifyRazorpayPayment = async (req, res) => {
       'paymentDetails.razorpayPaymentId': razorpay_payment_id,
       'paymentDetails.paidAt':            new Date(),
       orderStatus: 'confirmed',
-    }, { new: true });
+    }, { new: true }).populate('user', 'name email');
+
+    if (order.paymentPlan === 'emi' && order.user?.email) {
+      const paidAt = order.paymentDetails.paidAt || new Date();
+      const paidAmount = order.paymentDetails.amountPaid || getOnlineBookingAmount(order.total);
+      const remainingAmount = Math.max(0, order.total - paidAmount);
+      await sendEmiPaymentEmail(order.user.email, {
+        buyerName: order.user.name,
+        orderNumber: order.orderNumber,
+        paidAmount,
+        paidAt,
+        paymentId: razorpay_payment_id,
+        nextEmiAmount: getEstimatedEmiAmount(remainingAmount),
+        nextEmiDate: addMonths(paidAt, 1),
+        remainingAmount,
+        tenureMonths: 240,
+        annualRate: 8.5,
+      });
+    }
 
     res.json({ success: true, order });
   } catch (err) {

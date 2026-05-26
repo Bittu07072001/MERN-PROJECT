@@ -22,6 +22,7 @@ const orderSchema = new mongoose.Schema({
     country: { type: String, default: 'India' },
   },
   paymentMethod:  { type: String, enum: ['razorpay', 'cod'], required: true },
+  paymentPlan:    { type: String, enum: ['full', 'emi'], default: 'full' },
   paymentStatus:  { type: String, enum: ['pending', 'paid', 'failed', 'refunded'], default: 'pending' },
   paymentDetails: {
     razorpayOrderId:   String,

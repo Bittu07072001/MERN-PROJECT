@@ -81,3 +81,73 @@ exports.sendOTPEmail = async (email, otp, type = 'login') => {
     if (process.env.NODE_ENV === 'production') throw err;
   }
 };
+
+const money = new Intl.NumberFormat('en-IN', {
+  style: 'currency',
+  currency: 'INR',
+  maximumFractionDigits: 0,
+});
+
+const formatMoney = (value = 0) => money.format(Math.max(0, Number(value) || 0));
+
+const formatDate = (value) => new Intl.DateTimeFormat('en-IN', {
+  day: 'numeric',
+  month: 'short',
+  year: 'numeric',
+}).format(value instanceof Date ? value : new Date(value));
+
+exports.sendEmiPaymentEmail = async (email, details) => {
+  try {
+    const {
+      buyerName = 'Buyer',
+      orderNumber,
+      paidAmount,
+      paidAt,
+      paymentId,
+      nextEmiAmount,
+      nextEmiDate,
+      remainingAmount,
+      tenureMonths,
+      annualRate,
+    } = details;
+
+    await transporter.sendMail({
+      from: `"${env('FROM_NAME', 'HomeConnect')}" <${env('FROM_EMAIL', env('SMTP_USER'))}>`,
+      to: email,
+      subject: `HomeConnect EMI payment update for ${orderNumber}`,
+      html: `
+        <div style="font-family:Inter,Arial,sans-serif;max-width:560px;margin:auto;background:#f9fafb;border-radius:12px;overflow:hidden;border:1px solid #e5e7eb">
+          <div style="background:#4f46e5;padding:28px;text-align:center">
+            <h1 style="color:#fff;margin:0;font-size:24px">HomeConnect</h1>
+            <p style="color:#e0e7ff;margin:8px 0 0">EMI payment confirmation</p>
+          </div>
+          <div style="padding:28px;color:#374151">
+            <p style="font-size:16px;margin-top:0">Hi ${buyerName},</p>
+            <p>Your EMI payment for order <b>${orderNumber}</b> has been recorded successfully.</p>
+
+            <div style="background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:16px;margin:18px 0">
+              <h2 style="font-size:16px;margin:0 0 12px;color:#111827">Recently paid EMI</h2>
+              <p style="margin:6px 0"><b>Paid amount:</b> ${formatMoney(paidAmount)}</p>
+              <p style="margin:6px 0"><b>Paid date:</b> ${formatDate(paidAt)}</p>
+              <p style="margin:6px 0"><b>Payment ID:</b> ${paymentId}</p>
+            </div>
+
+            <div style="background:#eef2ff;border:1px solid #c7d2fe;border-radius:10px;padding:16px;margin:18px 0">
+              <h2 style="font-size:16px;margin:0 0 12px;color:#312e81">Next EMI details</h2>
+              <p style="margin:6px 0"><b>Next EMI amount:</b> ${formatMoney(nextEmiAmount)}</p>
+              <p style="margin:6px 0"><b>Due date:</b> ${formatDate(nextEmiDate)}</p>
+              <p style="margin:6px 0"><b>Remaining amount:</b> ${formatMoney(remainingAmount)}</p>
+            </div>
+
+            <p style="font-size:13px;color:#6b7280">
+              EMI values are estimated using ${annualRate}% p.a. for ${tenureMonths} months.
+              Final bank/card EMI charges may vary as per the payment provider.
+            </p>
+          </div>
+        </div>`,
+    });
+    console.log(`EMI payment email sent to ${email}`);
+  } catch (err) {
+    console.error('EMI payment email failed:', err.message);
+  }
+};
