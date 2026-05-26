@@ -1,14 +1,13 @@
-import { useCallback, useState } from 'react';
+import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Eye, EyeOff, Mail, Lock, User, Phone, ArrowRight, Sparkles, Shield, Star, CheckCircle2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
 import useAuthStore from '../../context/authStore';
 import api from '../../utils/api';
-import GoogleAuthButton from '../../components/auth/GoogleAuthButton';
 
 export default function Register() {
-  const { register, verifyOTP, selectRole, googleAuth } = useAuthStore();
+  const { register, verifyOTP, selectRole } = useAuthStore();
   const navigate = useNavigate();
 
   const [step,    setStep]    = useState('form');
@@ -21,24 +20,6 @@ export default function Register() {
   const [form,    setForm]    = useState({ name: '', email: '', phone: '', password: '', confirmPassword: '', roles: ['customer'] });
 
   const handleChange = e => setForm(f => ({ ...f, [e.target.name]: e.target.value }));
-
-  const handleGoogleAuth = useCallback(async (credential) => {
-    setLoading(true);
-    try {
-      const res = await googleAuth({ credential, roles: form.roles });
-      if (res.requireRoleSelection) {
-        setAvailableRoles(res.availableRoles || []);
-        setUserId(res.userId);
-        setStep('role');
-        toast.success('Choose your role to continue.');
-        return;
-      }
-      toast.success('Signed in with Google!');
-      navigate(res.role === 'admin' ? '/admin' : res.role === 'seller' ? '/seller' : '/');
-    } catch (err) {
-      toast.error(err.response?.data?.message || 'Google sign-up failed');
-    } finally { setLoading(false); }
-  }, [form.roles, googleAuth, navigate]);
 
   const handleSubmit = async e => {
     e.preventDefault();
@@ -321,14 +302,6 @@ export default function Register() {
                       : <><span>Create Account</span><ArrowRight className="w-4 h-4" /></>
                     }
                   </button>
-
-                  <div className="flex items-center gap-3">
-                    <div className="h-px flex-1 bg-gray-200 dark:bg-gray-700" />
-                    <span className="text-xs font-semibold uppercase tracking-wide text-gray-400">or</span>
-                    <div className="h-px flex-1 bg-gray-200 dark:bg-gray-700" />
-                  </div>
-
-                  <GoogleAuthButton text="signup_with" onCredential={handleGoogleAuth} />
 
                   <p className="text-center text-sm text-gray-600 dark:text-gray-400">
                     Already have an account?{' '}
