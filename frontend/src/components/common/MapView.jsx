@@ -176,7 +176,7 @@ export default function MapView({ address, propertyName, location, className = '
 
       const searchText = displayAddress || propertyName;
       if (!searchText) {
-        setMapError(true);
+        setMapError(false);
         return;
       }
 
@@ -201,7 +201,7 @@ export default function MapView({ address, propertyName, location, className = '
         if (!cancelled && position && Number.isFinite(position.lat) && Number.isFinite(position.lng)) {
           setFallbackCoordinates(position);
         } else if (!cancelled) {
-          setMapError(true);
+          setMapError(false);
         }
       } catch {
         if (!cancelled) setMapError(false);
@@ -304,7 +304,7 @@ export default function MapView({ address, propertyName, location, className = '
             allowFullScreen
             loading="lazy"
             onLoad={() => setMapLoaded(true)}
-            onError={() => setMapError(true)}
+            onError={() => setMapLoaded(true)}
             title={`Map for ${propertyName}`}
             className="opacity-100"
           />
