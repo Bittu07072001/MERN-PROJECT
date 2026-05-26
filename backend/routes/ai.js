@@ -15,6 +15,86 @@ function formatINR(value) {
   return `Rs ${n.toLocaleString('en-IN')}`;
 }
 
+const LOCATION_LOCALITIES = {
+  Mumbai: ['Bandra West', 'Powai', 'Worli', 'Andheri West'],
+  Delhi: ['Dwarka', 'Saket', 'Rohini', 'Vasant Kunj'],
+  Bangalore: ['Whitefield', 'Indiranagar', 'Sarjapur Road', 'HSR Layout'],
+  Pune: ['Kharadi', 'Hinjewadi', 'Wakad', 'Koregaon Park'],
+  Hyderabad: ['Gachibowli', 'Madhapur', 'Kondapur', 'Jubilee Hills'],
+  Chennai: ['Adyar', 'Anna Nagar', 'OMR Navalur', 'T. Nagar'],
+  Gurgaon: ['Golf Course Road', 'Sector 56', 'Cyber City', 'Sector 85'],
+  Noida: ['Sector 150', 'Sector 62', 'Sector 137', 'Noida Extension'],
+  Thane: ['Thane West', 'Ghodbunder Road', 'Majiwada', 'Hiranandani Estate'],
+  'Navi Mumbai': ['Kharghar', 'Vashi', 'Nerul', 'Panvel'],
+  Kolkata: ['New Town', 'Rajarhat', 'Salt Lake Sector V', 'Ballygunge'],
+  Ahmedabad: ['SG Highway', 'Satellite', 'Prahlad Nagar', 'Bopal'],
+  Jaipur: ['Vaishali Nagar', 'Mansarovar', 'Jagatpura', 'C-Scheme'],
+  Lucknow: ['Gomti Nagar', 'Hazratganj', 'Aliganj', 'Sushant Golf City'],
+  Kochi: ['Kakkanad', 'Edappally', 'Marine Drive', 'Vyttila'],
+};
+
+function buildFallbackLocationSuggestions({ city, budget, propertyType }) {
+  const localities = LOCATION_LOCALITIES[city] || [
+    `${city} Central`,
+    `${city} West`,
+    `${city} Extension`,
+    `${city} Highway Corridor`,
+  ];
+  const budgetText = budget ? ` within a budget near ${formatINR(budget)}` : '';
+  const typeText = propertyType ? ` for ${propertyType.toLowerCase()} buyers` : '';
+
+  return {
+    success: true,
+    isFallback: true,
+    topLocalities: localities.map((name, index) => ({
+      name,
+      avgPrice: index === 0 ? 'Premium micro-market' : index === 1 ? 'Mid to premium range' : 'Value to mid range',
+      pros: [
+        index < 2 ? 'Strong end-user demand' : 'Better value for larger homes',
+        'Good access to daily conveniences',
+        propertyType ? `Suitable ${propertyType} inventory` : 'Multiple property options',
+      ],
+      connectivity: index < 2
+        ? 'Well connected to main roads, business districts, schools, and hospitals.'
+        : 'Improving road connectivity with growing social infrastructure.',
+      trend: index === 2 ? 'stable' : 'rising',
+      investmentScore: Math.max(6, 9 - index),
+    })),
+    marketInsights: `${city} has active demand${typeText}${budgetText}. Prime localities usually offer stronger liquidity and rental demand, while emerging pockets can offer better entry prices and appreciation potential.`,
+    buyingTips: [
+      'Compare final all-in cost including stamp duty, registration, maintenance, parking, and brokerage.',
+      'Check commute time, water supply, nearby schools, hospitals, and resale demand before shortlisting.',
+      'Verify RERA status, title documents, occupancy certificate, and society or builder track record.',
+    ],
+  };
+}
+
+function buildFallbackRecommendations(sampleProps, propsForAI, limit, { category, budget, city }) {
+  const max = Math.min(Number(limit) || 4, sampleProps.length);
+  const recommendations = sampleProps.slice(0, max).map((property, index) => {
+    const price = property.discountPrice > 0 ? property.discountPrice : property.price;
+    const reasons = [
+      city ? `Located in ${property.location?.city || city}, matching your preferred city.` : 'Matches your broad location preference.',
+      category ? `Fits your selected ${category} property type.` : `A relevant ${property.category} option from available listings.`,
+      budget ? `Listed around ${formatINR(price)}, within your stated budget.` : 'Shortlisted from active approved listings.',
+    ];
+
+    return {
+      property,
+      reason: reasons.filter(Boolean).slice(0, 2).join(' '),
+    };
+  });
+
+  return {
+    success: true,
+    isFallback: true,
+    recommendations,
+    summary: propsForAI.length
+      ? `Showing ${recommendations.length} matching HomeConnect listings based on your ${[category, city, budget ? 'budget' : ''].filter(Boolean).join(', ') || 'preferences'}. AI reasoning is temporarily unavailable, so these are ranked by listing quality signals.`
+      : 'No properties found matching your criteria.',
+  };
+}
+
 async function getPlatformSnapshot() {
   const baseMatch = { isActive: true, approvalStatus: 'approved' };
   const [summary] = await Product.aggregate([
@@ -203,7 +283,7 @@ router.get('/recommendations', optionalAuth, async (req, res) => {
     const sampleProps = await Product.find(query)
       .sort('-ratings.average -viewCount')
       .limit(20)
-      .select('name category price discountPrice description attributes tags ratings viewCount location.city');
+      .select('name category price discountPrice description attributes tags ratings viewCount location.city images');
 
     if (sampleProps.length === 0) {
       return res.json({ success: true, recommendations: [], reasoning: 'No properties found matching your criteria.' });
@@ -240,17 +320,38 @@ Task: Select the top ${Math.min(Number(limit), sampleProps.length)} most suitabl
 
 Only include the JSON, no other text.`;
 
-    const { content, tokens, duration } = await callGroq(
-      [{ role: 'user', content: prompt }],
-      { maxTokens: 800, temperature: 0.4 }
-    );
-
+    let content = '';
+    let tokens = 0;
+    let duration = 0;
     let parsed;
+
     try {
+      const ai = await callGroq(
+        [{ role: 'user', content: prompt }],
+        { maxTokens: 800, temperature: 0.4 }
+      );
+      content = ai.content;
+      tokens = ai.tokens;
+      duration = ai.duration;
+
       const jsonMatch = content.match(/\{[\s\S]*\}/);
       parsed = JSON.parse(jsonMatch ? jsonMatch[0] : content);
-    } catch {
-      parsed = { recommendations: propsForAI.slice(0, limit).map((_, i) => ({ index: i, reason: 'Highly rated property matching your criteria.' })), summary: 'Top rated properties for you.' };
+    } catch (aiErr) {
+      console.error('Groq recommendations fallback:', aiErr.message);
+
+      if (req.user) {
+        await AILog.create({
+          user: req.user._id,
+          type: 'recommendation',
+          prompt: JSON.stringify({ category, budget, city }),
+          response: '',
+          model: GROQ_MODEL,
+          success: false,
+          error: aiErr.message,
+        }).catch(() => {});
+      }
+
+      return res.json(buildFallbackRecommendations(sampleProps, propsForAI, limit, { category, budget, city }));
     }
 
     const recommendations = (parsed.recommendations || []).map(rec => ({
@@ -341,7 +442,25 @@ Return 3-4 localities. Only include JSON, no other text.`;
     res.json({ success: true, ...parsed });
   } catch (err) {
     console.error('Groq location suggestions error:', err.message);
-    res.status(500).json({ success: false, message: 'AI location suggestions unavailable', error: err.message });
+
+    if (req.user) {
+      await AILog.create({
+        user: req.user._id,
+        type: 'location_suggestion',
+        prompt: JSON.stringify(req.body || {}),
+        response: '',
+        model: GROQ_MODEL,
+        success: false,
+        error: err.message,
+      }).catch(() => {});
+    }
+
+    const { city, budget, propertyType } = req.body || {};
+    if (!city) {
+      return res.status(400).json({ success: false, message: 'City is required' });
+    }
+
+    res.json(buildFallbackLocationSuggestions({ city, budget, propertyType }));
   }
 });
 
