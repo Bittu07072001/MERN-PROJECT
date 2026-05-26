@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { computeInvestmentScore, scoreColor } from '../../utils/aiScore';
 
-const CITIES = ['Mumbai','Delhi','Bangalore','Gurgaon','Pune','Hyderabad','Chennai','Noida','Kolkata','Thane','Navi Mumbai'];
+const CITIES = ['Mumbai','Delhi','Bangalore','Pune','Hyderabad','Chennai','Gurgaon','Noida','Thane','Navi Mumbai','Kolkata','Ahmedabad','Jaipur','Lucknow','Kochi'];
 const CATEGORIES = ['Flat','Apartments','Condominium','Office','Commercial','Studio','Penthouse','Villa','Plot'];
 const BHK_OPTIONS = ['Studio','1 BHK','2 BHK','3 BHK','4 BHK','4+ BHK'];
 const FURNISHING = ['Fully Furnished','Semi Furnished','Unfurnished'];
@@ -24,6 +24,10 @@ const BASE = {
   Kolkata:     { Flat: 8000,  Apartments: 7000,  Condominium: 9000,  Office: 5500,  Commercial: 7500,  Studio: 7200,  Penthouse: 13500, Villa: 12000, Plot: 4000 },
   'Thane':     { Flat: 14000, Apartments: 12000, Condominium: 15000, Office: 8000,  Commercial: 12500, Studio: 12500, Penthouse: 21000, Villa: 18000, Plot: 7000 },
   'Navi Mumbai': { Flat: 15000, Apartments: 12500, Condominium: 16000, Office: 9000, Commercial: 14000, Studio: 13000, Penthouse: 23000, Villa: 20000, Plot: 8000 },
+  Ahmedabad:   { Flat: 8500,  Apartments: 7200,  Condominium: 9200,  Office: 6200,  Commercial: 9800,  Studio: 7600,  Penthouse: 14500, Villa: 12500, Plot: 4500 },
+  Jaipur:      { Flat: 6500,  Apartments: 5600,  Condominium: 7200,  Office: 4800,  Commercial: 7000,  Studio: 6000,  Penthouse: 11000, Villa: 9500,  Plot: 3500 },
+  Lucknow:     { Flat: 6200,  Apartments: 5200,  Condominium: 6800,  Office: 4500,  Commercial: 6500,  Studio: 5600,  Penthouse: 10000, Villa: 9000,  Plot: 3200 },
+  Kochi:       { Flat: 7800,  Apartments: 6800,  Condominium: 8500,  Office: 5200,  Commercial: 7600,  Studio: 7000,  Penthouse: 12500, Villa: 11000, Plot: 4200 },
 };
 
 const FURN_MOD  = { 'Fully Furnished': 1.15, 'Semi Furnished': 1.07, 'Unfurnished': 1.0 };

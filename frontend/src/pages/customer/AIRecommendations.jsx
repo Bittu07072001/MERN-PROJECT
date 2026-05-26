@@ -6,7 +6,7 @@ import toast from 'react-hot-toast';
 import api from '../../utils/api';
 
 const CATEGORIES = ['Flat', 'Apartments', 'Condominium', 'Office', 'Commercial', 'Studio', 'Penthouse', 'Villa', 'Plot'];
-const CITIES = ['Mumbai', 'Delhi', 'Bangalore', 'Pune', 'Hyderabad', 'Chennai', 'Gurgaon', 'Noida', 'Thane', 'Navi Mumbai'];
+const CITIES = ['Mumbai', 'Delhi', 'Bangalore', 'Pune', 'Hyderabad', 'Chennai', 'Gurgaon', 'Noida', 'Thane', 'Navi Mumbai', 'Kolkata', 'Ahmedabad', 'Jaipur', 'Lucknow', 'Kochi'];
 
 function fmt(n) {
   if (!n) return '—';

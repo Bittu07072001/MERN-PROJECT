@@ -124,7 +124,7 @@ router.post('/chat', optionalAuth, async (req, res) => {
 - Property valuations and price estimates
 - Booking site visits and video calls
 - RERA compliance and legal advice
-- Location-specific property market insights for Indian cities (Mumbai, Delhi, Bangalore, Pune, Hyderabad, Chennai, Gurgaon, Noida)
+- Location-specific property market insights for Indian cities (Mumbai, Delhi, Bangalore, Pune, Hyderabad, Chennai, Gurgaon, Noida, Thane, Navi Mumbai, Kolkata, Ahmedabad, Jaipur, Lucknow, Kochi)
 - Stamp duty and registration charges
 
 ${propertyContext ? `Current Property Context:
@@ -198,11 +198,12 @@ router.get('/recommendations', optionalAuth, async (req, res) => {
     const query = { isActive: true, approvalStatus: 'approved' };
     if (category) query.category = new RegExp(category, 'i');
     if (budget) query.price = { $lte: Number(budget) };
+    if (city) query['location.city'] = new RegExp(`^${city}$`, 'i');
 
     const sampleProps = await Product.find(query)
       .sort('-ratings.average -viewCount')
       .limit(20)
-      .select('name category price discountPrice description attributes tags ratings viewCount');
+      .select('name category price discountPrice description attributes tags ratings viewCount location.city');
 
     if (sampleProps.length === 0) {
       return res.json({ success: true, recommendations: [], reasoning: 'No properties found matching your criteria.' });
