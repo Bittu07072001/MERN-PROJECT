@@ -6,7 +6,8 @@
   "scripts": {
     "start": "node server.js",
     "dev": "nodemon server.js",
-    "seed": "node seed.js"
+    "seed": "node seed.js",
+    "seed:more-cloudinary": "node seedMoreCloudinaryListings.js"
   },
   "dependencies": {
     "axios": "^1.15.0",

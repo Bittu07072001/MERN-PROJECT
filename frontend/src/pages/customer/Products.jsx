@@ -74,7 +74,11 @@ export default function Products() {
 
   useEffect(() => { fetchProducts(); }, [fetchProducts]);
 
-  const setFilter = (key, val) => setFilters(f => ({ ...f, [key]: val, page: 1 }));
+  const setFilter = (key, val) => setFilters(f => ({
+    ...f,
+    [key]: val,
+    page: key === 'page' ? val : 1,
+  }));
   const clearFilters = () => setFilters({ search: '', category: '', minPrice: '', maxPrice: '', sort: '-createdAt', page: 1, isFeatured: '', isTrending: '' });
 
   const activeFilterCount = [filters.category, filters.minPrice, filters.maxPrice, filters.isFeatured, filters.isTrending].filter(Boolean).length;
