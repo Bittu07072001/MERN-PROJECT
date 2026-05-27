@@ -27,10 +27,10 @@ export default function SellerOrders() {
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
-              <tr>{['Order #','Customer','Items','Total','Status','Date','Action'].map(h => <th key={h} className="text-left px-4 py-3 font-semibold text-gray-600 dark:text-gray-400 text-xs uppercase tracking-wider">{h}</th>)}</tr>
+              <tr>{['Order #','Customer','Items','Total','Status','Date'].map(h => <th key={h} className="text-left px-4 py-3 font-semibold text-gray-600 dark:text-gray-400 text-xs uppercase tracking-wider">{h}</th>)}</tr>
             </thead>
             <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
-              {loading ? [...Array(4)].map((_, i) => <tr key={i}><td colSpan={7} className="px-4 py-3"><div className="h-4 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" /></td></tr>)
+              {loading ? [...Array(4)].map((_, i) => <tr key={i}><td colSpan={6} className="px-4 py-3"><div className="h-4 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" /></td></tr>)
                 : orders.map(o => (
                 <tr key={o._id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
                   <td className="px-4 py-3 font-mono text-xs text-indigo-600 dark:text-indigo-400 font-semibold">{o.orderNumber}</td>
@@ -39,11 +39,6 @@ export default function SellerOrders() {
                   <td className="px-4 py-3 font-bold text-gray-900 dark:text-white">₹{o.total?.toLocaleString()}</td>
                   <td className="px-4 py-3"><span className={`badge text-xs capitalize ${getOrderStatusColor(o.orderStatus)}`}>{formatOrderStatus(o.orderStatus)}</span></td>
                   <td className="px-4 py-3 text-gray-500 dark:text-gray-400">{new Date(o.createdAt).toLocaleDateString('en-IN')}</td>
-                  <td className="px-4 py-3">
-                    <span className={`badge text-xs capitalize ${getOrderStatusColor(o.orderStatus)}`}>
-                      {formatOrderStatus(o.orderStatus)}
-                    </span>
-                  </td>
                 </tr>
               ))}
             </tbody>
