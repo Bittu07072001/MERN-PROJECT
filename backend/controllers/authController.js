@@ -18,12 +18,25 @@ const signRefreshToken = (id) =>
 
 const normalizeOTP = (otp) => String(otp || '').trim();
 
+const MAIN_ADMIN_NAME = 'project2.0';
+const MAIN_ADMIN_EMAIL = 'projectchandra420@gmail.com';
+
+const isMainAdminAccount = (user) => (
+  String(user?.name || '').trim().toLowerCase() === MAIN_ADMIN_NAME &&
+  String(user?.email || '').trim().toLowerCase() === MAIN_ADMIN_EMAIL
+);
+
+const hasApprovedAdminAccess = (user) => isMainAdminAccount(user) || user?.adminApproved === true;
+
 const getLoginRoles = (roles) => {
   const userRoles = roles && roles.length > 0 ? roles : ['customer'];
   return userRoles.includes('seller')
     ? userRoles.filter(role => role !== 'customer')
     : userRoles;
 };
+
+const getAvailableLoginRoles = (user, roles) =>
+  getLoginRoles(roles).filter(role => role !== 'admin' || hasApprovedAdminAccess(user));
 
 const authPayload = (user, role = user.role) => {
   const userRoles = user.roles && user.roles.length > 0 ? user.roles : [role];
@@ -33,6 +46,7 @@ const authPayload = (user, role = user.role) => {
     email: user.email,
     role,
     roles: userRoles,
+    adminApproved: hasApprovedAdminAccess(user),
     avatar: user.avatar,
     phone: user.phone,
     preferences: user.preferences,
@@ -83,6 +97,7 @@ exports.register = async (req, res) => {
       phone: phone || '',
       role:  userRole,
       roles: userRoles,
+      adminApproved: false,
       loginOtp:        otp,
       loginOtpExpires: otpExpires,
       loginOtpType:    'email',
@@ -122,27 +137,39 @@ exports.verifyRegistrationOTP = async (req, res) => {
     await user.save();
 
     const userRoles = user.roles && user.roles.length > 0 ? user.roles : [user.role];
+    const loginRoles = getAvailableLoginRoles(user, userRoles);
+
+    if (userRoles.includes('admin') && loginRoles.length === 0) {
+      return res.json({
+        success: true,
+        message: 'Admin account verified. Main admin approval is required before you can access the admin portal.',
+        pendingAdminApproval: true,
+      });
+    }
 
     // If multiple roles registered, ask user to pick one to start with
-    if (userRoles.length > 1) {
+    if (loginRoles.length > 1) {
       return res.json({
         success: true,
         message: 'Account verified! Please select a role to continue.',
         requireRoleSelection: true,
         userId: user._id,
-        availableRoles: userRoles,
+        availableRoles: loginRoles,
       });
     }
 
-    const token        = signToken(user._id, user.role);
+    const loginRole = loginRoles[0] || user.role;
+    if (user.role !== loginRole) user.role = loginRole;
+
+    const token        = signToken(user._id, loginRole);
     const refreshToken = signRefreshToken(user._id);
-    await User.findByIdAndUpdate(user._id, { refreshToken, isOnline: true });
+    await User.findByIdAndUpdate(user._id, { role: loginRole, refreshToken, isOnline: true });
 
     res.json({
       success: true,
       message: 'Account verified successfully!',
       token, refreshToken,
-      user: { _id: user._id, name: user.name, email: user.email, role: user.role, roles: userRoles, avatar: user.avatar, phone: user.phone },
+      user: authPayload(user, loginRole),
     });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
@@ -167,6 +194,12 @@ exports.login = async (req, res) => {
       return res.status(403).json({ success: false, message: 'Account deactivated. Contact support.' });
     if (!user.isEmailVerified)
       return res.status(403).json({ success: false, message: 'Email not verified. Please complete registration first.' });
+
+    const userRoles = user.roles && user.roles.length > 0 ? user.roles : [user.role];
+    const loginRoles = getAvailableLoginRoles(user, userRoles);
+    if (userRoles.includes('admin') && loginRoles.length === 0) {
+      return res.status(403).json({ success: false, message: 'Admin access pending approval from main admin.' });
+    }
 
     const otp        = generateOTP();
     const otpExpires = new Date(Date.now() + 10 * 60 * 1000);
@@ -230,6 +263,7 @@ exports.googleAuth = async (req, res) => {
         password: crypto.randomBytes(24).toString('hex'),
         role: userRoles[0],
         roles: userRoles,
+        adminApproved: false,
         avatar: profile.picture || '',
         googleId: profile.sub || '',
         authProvider: 'google',
@@ -253,9 +287,15 @@ exports.googleAuth = async (req, res) => {
       user.isEmailVerified = true;
     }
 
-    const loginRoles = hasRequestedRoles
+    const requestedLoginRoles = hasRequestedRoles
       ? userRoles
-      : getLoginRoles(user.roles && user.roles.length > 0 ? user.roles : [user.role]);
+      : (user.roles && user.roles.length > 0 ? user.roles : [user.role]);
+    const loginRoles = getAvailableLoginRoles(user, requestedLoginRoles);
+
+    if (requestedLoginRoles.includes('admin') && loginRoles.length === 0) {
+      await user.save();
+      return res.status(403).json({ success: false, message: 'Admin access pending approval from main admin.' });
+    }
 
     if (loginRoles.length > 1) {
       await user.save();
@@ -294,7 +334,10 @@ exports.verifyLoginOTP = async (req, res) => {
 
     // If the user has multiple roles, ask them to pick one before issuing a token
     const userRoles = user.roles && user.roles.length > 0 ? user.roles : [user.role];
-    const loginRoles = getLoginRoles(userRoles);
+    const loginRoles = getAvailableLoginRoles(user, userRoles);
+    if (userRoles.includes('admin') && loginRoles.length === 0) {
+      return res.status(403).json({ success: false, message: 'Admin access pending approval from main admin.' });
+    }
     if (loginRoles.length > 1) {
       return res.json({
         success: true,
@@ -313,7 +356,7 @@ exports.verifyLoginOTP = async (req, res) => {
 
     res.json({
       success: true, token, refreshToken,
-      user: { _id: user._id, name: user.name, email: user.email, role: loginRole, roles: userRoles, avatar: user.avatar, phone: user.phone, preferences: user.preferences },
+      user: authPayload(user, loginRole),
     });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
@@ -333,6 +376,10 @@ exports.selectRole = async (req, res) => {
     if (!userRoles.includes(role))
       return res.status(403).json({ success: false, message: `You do not have the '${role}' role` });
 
+    if (role === 'admin' && !hasApprovedAdminAccess(user)) {
+      return res.status(403).json({ success: false, message: 'Admin access pending approval from main admin.' });
+    }
+
     // Update the active role on the user record
     await User.findByIdAndUpdate(user._id, { role });
 
@@ -342,7 +389,7 @@ exports.selectRole = async (req, res) => {
 
     res.json({
       success: true, token, refreshToken,
-      user: { _id: user._id, name: user.name, email: user.email, role, roles: userRoles, avatar: user.avatar, phone: user.phone, preferences: user.preferences },
+      user: authPayload(user, role),
     });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });

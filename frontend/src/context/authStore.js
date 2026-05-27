@@ -32,6 +32,9 @@ const useAuthStore = create((set, get) => ({
   verifyOTP: async (userId, otp, type = 'login') => {
     const endpoint = type === 'register' ? '/auth/verify-registration-otp' : '/auth/verify-login-otp';
     const { data } = await api.post(endpoint, { userId, otp });
+    if (data.pendingAdminApproval) {
+      return { pendingAdminApproval: true, message: data.message };
+    }
     // Multi-role: user needs to pick which role to enter as
     if (data.requireRoleSelection) {
       return { requireRoleSelection: true, userId: data.userId, availableRoles: data.availableRoles };

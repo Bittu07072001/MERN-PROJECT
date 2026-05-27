@@ -11,6 +11,7 @@ router.get('/overview',                           ctrl.getOverviewStats);
 
 router.get('/users',                              ctrl.getUsers);
 router.put('/users/:userId/toggle',               ctrl.toggleUserStatus);
+router.delete('/users/:userId',                   ctrl.deleteUser);
 
 router.get('/sellers',                            ctrl.getSellers);
 router.post('/sellers',                           ctrl.addSeller);

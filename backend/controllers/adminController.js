@@ -5,6 +5,15 @@ const Booking = require('../models/Booking');
 const { Review, Coupon, Notification } = require('../models/index');
 const AILog   = require('../models/AILog');
 
+const MAIN_ADMIN_NAME = 'project2.0';
+const MAIN_ADMIN_EMAIL = 'projectchandra420@gmail.com';
+
+const isMainAdmin = (user) => (
+  user?.role === 'admin' &&
+  String(user?.name || '').trim().toLowerCase() === MAIN_ADMIN_NAME &&
+  String(user?.email || '').trim().toLowerCase() === MAIN_ADMIN_EMAIL
+);
+
 exports.getDashboard = async (req, res) => {
   try {
     const [totalBuyers, totalSellers, activeBuyers, activeSellers, totalProducts, totalOrders, pendingOrders, revenue, recentOrders, topProducts] =
@@ -131,9 +140,46 @@ exports.toggleUserStatus = async (req, res) => {
   try {
     const user = await User.findById(req.params.userId);
     if (!user) return res.status(404).json({ success: false, message: 'User not found' });
-    user.isActive = !user.isActive;
+
+    if (user.role === 'admin') {
+      if (!isMainAdmin(req.user)) {
+        return res.status(403).json({ success: false, message: 'Only the main admin can grant admin portal access' });
+      }
+      if (String(user._id) === String(req.user._id) || isMainAdmin(user)) {
+        return res.status(400).json({ success: false, message: 'Main admin access cannot be changed' });
+      }
+      user.adminApproved = !user.adminApproved;
+      if (user.adminApproved) user.isActive = true;
+    } else {
+      user.isActive = !user.isActive;
+    }
+
     await user.save();
     res.json({ success: true, user });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+exports.deleteUser = async (req, res) => {
+  try {
+    const user = await User.findById(req.params.userId);
+    if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+
+    if (String(user._id) === String(req.user._id)) {
+      return res.status(400).json({ success: false, message: 'You cannot delete your own account' });
+    }
+
+    if (user.role === 'admin' && !isMainAdmin(req.user)) {
+      return res.status(403).json({ success: false, message: 'Only the main admin can delete admins' });
+    }
+
+    if (isMainAdmin(user)) {
+      return res.status(400).json({ success: false, message: 'Main admin cannot be deleted' });
+    }
+
+    await user.deleteOne();
+    res.json({ success: true, message: `${user.role === 'admin' ? 'Admin' : 'User'} removed` });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }

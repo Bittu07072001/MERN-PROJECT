@@ -1,13 +1,27 @@
 import { useState, useEffect } from 'react';
-import { Search, UserCheck, UserX } from 'lucide-react';
+import { Search, Trash2, UserCheck, UserX } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../../utils/api';
+import useAuthStore from '../../context/authStore';
 
 export default function AdminUsers({ fixedRole = 'customer', title = 'Users', showRoleFilter = false }) {
   const [users, setUsers]   = useState([]);
   const [search, setSearch] = useState('');
   const [role, setRole]     = useState(fixedRole || '');
   const [loading, setLoading] = useState(true);
+  const { user: currentUser } = useAuthStore();
+  const isAdminList = (fixedRole || role) === 'admin';
+  const isMainAdmin = currentUser?.role === 'admin' &&
+    currentUser?.name?.trim().toLowerCase() === 'project2.0' &&
+    currentUser?.email?.trim().toLowerCase() === 'projectchandra420@gmail.com';
+
+  const isMainAdminAccount = (user) => (
+    user?.role === 'admin' &&
+    user?.name?.trim().toLowerCase() === 'project2.0' &&
+    user?.email?.trim().toLowerCase() === 'projectchandra420@gmail.com'
+  );
+
+  const hasAdminPortalAccess = (user) => isMainAdminAccount(user) || user?.adminApproved === true;
 
   const fetch = async () => {
     setLoading(true);
@@ -27,8 +41,34 @@ export default function AdminUsers({ fixedRole = 'customer', title = 'Users', sh
     try {
       const { data } = await api.put(`/admin/users/${userId}/toggle`);
       setUsers(u => u.map(x => x._id === userId ? data.user : x));
-      toast.success(data.user.isActive ? 'User activated' : 'User deactivated');
-    } catch { toast.error('Failed'); }
+      if (data.user.role === 'admin') {
+        toast.success(hasAdminPortalAccess(data.user) ? 'Admin portal access granted' : 'Admin portal access revoked');
+      } else {
+        toast.success(data.user.isActive ? 'User activated' : 'User deactivated');
+      }
+    } catch (err) { toast.error(err.response?.data?.message || 'Failed'); }
+  };
+
+  const canDeleteUser = (user) => (
+    user._id !== currentUser?._id &&
+    (!isAdminList || (isMainAdmin && !isMainAdminAccount(user)))
+  );
+
+  const canToggleUser = (user) => (
+    !isAdminList || (isMainAdmin && user._id !== currentUser?._id && !isMainAdminAccount(user))
+  );
+
+  const handleDeleteUser = async (user) => {
+    const label = user.role === 'admin' ? 'admin' : 'user';
+    if (!window.confirm(`Delete ${label} "${user.name}" permanently?`)) return;
+
+    try {
+      await api.delete(`/admin/users/${user._id}`);
+      setUsers(u => u.filter(x => x._id !== user._id));
+      toast.success(user.role === 'admin' ? 'Admin removed' : 'User removed');
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to remove user');
+    }
   };
 
   const ROLE_BADGE = { customer: 'bg-blue-100 text-blue-700', seller: 'bg-purple-100 text-purple-700', admin: 'bg-red-100 text-red-700' };
@@ -82,17 +122,28 @@ export default function AdminUsers({ fixedRole = 'customer', title = 'Users', sh
                     </span>
                   </td>
                   <td className="px-4 py-3">
-                    <span className={`badge text-xs ${u.isOnline ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}`}>
-                      {u.isOnline ? 'Online' : 'Offline'}
+                    <span className={`badge text-xs ${isAdminList && !hasAdminPortalAccess(u) ? 'bg-amber-100 text-amber-700' : u.isOnline ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}`}>
+                      {isAdminList && !hasAdminPortalAccess(u) ? 'Pending' : u.isOnline ? 'Online' : 'Offline'}
                     </span>
                   </td>
                   <td className="px-4 py-3 text-gray-500 dark:text-gray-400">{new Date(u.createdAt).toLocaleDateString('en-IN')}</td>
                   <td className="px-4 py-3">
-                    <button onClick={() => handleToggle(u._id)}
-                      className={`p-1.5 rounded-lg transition-colors ${u.isActive ? 'text-red-500 hover:bg-red-50 dark:hover:bg-red-950' : 'text-green-500 hover:bg-green-50 dark:hover:bg-green-950'}`}
-                      title={u.isActive ? 'Block user' : 'Activate user'}>
-                      {u.isActive ? <UserX className="w-4 h-4" /> : <UserCheck className="w-4 h-4" />}
-                    </button>
+                    <div className="flex items-center gap-1">
+                      {canToggleUser(u) && (
+                        <button onClick={() => handleToggle(u._id)}
+                          className={`p-1.5 rounded-lg transition-colors ${(isAdminList ? hasAdminPortalAccess(u) : u.isActive) ? 'text-red-500 hover:bg-red-50 dark:hover:bg-red-950' : 'text-green-500 hover:bg-green-50 dark:hover:bg-green-950'}`}
+                          title={isAdminList ? (hasAdminPortalAccess(u) ? 'Revoke admin portal access' : 'Grant admin portal access') : (u.isActive ? 'Deactivate user' : 'Activate user')}>
+                          {(isAdminList ? hasAdminPortalAccess(u) : u.isActive) ? <UserX className="w-4 h-4" /> : <UserCheck className="w-4 h-4" />}
+                        </button>
+                      )}
+                      {canDeleteUser(u) && (
+                        <button onClick={() => handleDeleteUser(u)}
+                          className="p-1.5 rounded-lg text-red-500 hover:bg-red-50 dark:hover:bg-red-950 transition-colors"
+                          title="Delete user">
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}

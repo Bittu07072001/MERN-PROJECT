@@ -1,6 +1,17 @@
 const jwt  = require('jsonwebtoken');
 const User = require('../models/User');
 
+const MAIN_ADMIN_NAME = 'project2.0';
+const MAIN_ADMIN_EMAIL = 'projectchandra420@gmail.com';
+
+const isMainAdmin = (user) => (
+  user?.role === 'admin' &&
+  String(user?.name || '').trim().toLowerCase() === MAIN_ADMIN_NAME &&
+  String(user?.email || '').trim().toLowerCase() === MAIN_ADMIN_EMAIL
+);
+
+const hasApprovedAdminAccess = (user) => isMainAdmin(user) || user?.adminApproved === true;
+
 exports.protect = async (req, res, next) => {
   try {
     const token = req.headers.authorization?.startsWith('Bearer ')
@@ -27,6 +38,12 @@ exports.authorize = (...roles) => (req, res, next) => {
   if (!hasAllowedRole) {
     return res.status(403).json({ success: false, message: 'Access denied' });
   }
+
+  const matchedNonAdminRole = roles.some(role => role !== 'admin' && (req.user.role === role || userRoles.includes(role)));
+  if (roles.includes('admin') && userRoles.includes('admin') && !matchedNonAdminRole && !hasApprovedAdminAccess(req.user)) {
+    return res.status(403).json({ success: false, message: 'Admin access pending approval from main admin' });
+  }
+
   next();
 };
 

@@ -83,8 +83,12 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
   if (!user) return <Navigate to="/login" replace />;
   if (allowedRoles) {
     const userRoles = user.roles?.length ? user.roles : [user.role];
+    const isMainAdmin = user.role === 'admin' && user.name?.trim().toLowerCase() === 'project2.0' && user.email?.trim().toLowerCase() === 'projectchandra420@gmail.com';
+    const hasApprovedAdminAccess = isMainAdmin || user.adminApproved === true;
     const hasAllowedRole = allowedRoles.some(role => user.role === role || userRoles.includes(role));
     if (!hasAllowedRole) return <Navigate to="/" replace />;
+    const matchedNonAdminRole = allowedRoles.some(role => role !== 'admin' && (user.role === role || userRoles.includes(role)));
+    if (allowedRoles.includes('admin') && !matchedNonAdminRole && !hasApprovedAdminAccess) return <Navigate to="/login" replace />;
   }
   return children;
 };
@@ -93,7 +97,8 @@ const PublicRoute = ({ children }) => {
   const { user, initialized } = useAuthStore();
   if (!initialized) return <Loading />;
   if (user) {
-    if (user.role === 'admin')  return <Navigate to="/admin"  replace />;
+    const isMainAdmin = user.role === 'admin' && user.name?.trim().toLowerCase() === 'project2.0' && user.email?.trim().toLowerCase() === 'projectchandra420@gmail.com';
+    if (user.role === 'admin' && (isMainAdmin || user.adminApproved === true))  return <Navigate to="/admin"  replace />;
     if (user.role === 'seller') return <Navigate to="/seller" replace />;
     return <Navigate to="/" replace />;
   }
@@ -103,7 +108,8 @@ const PublicRoute = ({ children }) => {
 const CustomerRoute = ({ children }) => {
   const { user, initialized } = useAuthStore();
   if (!initialized) return <Loading />;
-  if (user?.role === 'admin') return <Navigate to="/admin" replace />;
+  const isMainAdmin = user?.role === 'admin' && user.name?.trim().toLowerCase() === 'project2.0' && user.email?.trim().toLowerCase() === 'projectchandra420@gmail.com';
+  if (user?.role === 'admin' && (isMainAdmin || user.adminApproved === true)) return <Navigate to="/admin" replace />;
   if (user?.role === 'seller') return <Navigate to="/seller" replace />;
   return children;
 };

@@ -54,6 +54,11 @@ export default function Register() {
     setLoading(true);
     try {
       const res = await verifyOTP(userId, code, 'register');
+      if (res.pendingAdminApproval) {
+        toast.success(res.message || 'Admin account verified. Waiting for main admin approval.');
+        navigate('/login');
+        return;
+      }
       if (res.requireRoleSelection) {
         setAvailableRoles(res.availableRoles);
         setUserId(res.userId);

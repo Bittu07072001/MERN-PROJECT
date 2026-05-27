@@ -27,6 +27,7 @@ const userSchema = new mongoose.Schema({
 
   isEmailVerified:     { type: Boolean, default: false },
   isTwoFactorEnabled:  { type: Boolean, default: false },
+  adminApproved:       { type: Boolean, default: false },
   twoFactorSecret:     { type: String, select: false },
 
   emailVerificationToken: String,
