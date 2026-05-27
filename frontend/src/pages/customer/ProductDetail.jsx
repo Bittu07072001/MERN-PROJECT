@@ -1,7 +1,7 @@
 // ProductDetail.jsx
 import { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { BadgeIndianRupee, Calculator, Heart, Star, Shield, ChevronLeft, ChevronRight, Play, CalendarCheck, TrendingUp, PenLine, ThumbsUp, CheckCircle2, MessageSquare } from 'lucide-react';
+import { BadgeIndianRupee, Calculator, Heart, Star, Shield, ChevronLeft, ChevronRight, Play, CalendarCheck, TrendingUp, PenLine, ThumbsUp, CheckCircle2, MessageSquare, ShoppingCart } from 'lucide-react';
 import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
 import api from '../../utils/api';
@@ -24,7 +24,6 @@ export default function ProductDetail() {
   const [related, setRelated]   = useState([]);
   const [loading, setLoading]   = useState(true);
   const [imgIdx,  setImgIdx]    = useState(0);
-  const qty = 1;
   const [adding,  setAdding]    = useState(false);
   const [tab,     setTab]       = useState('description');
   const [activeVideo, setActiveVideo] = useState(0);
@@ -87,7 +86,8 @@ export default function ProductDetail() {
     if (!user) return toast.error('Please login');
     setAdding(true);
     const ok = await add(product._id, 1);
-    if (ok) toast.success(`${qty}x ${product.name.slice(0, 20)}… added to cart!`);
+    if (ok) toast.success(`${product.name.slice(0, 20)}… added to cart. Quantity set to 1.`);
+    else toast.error('Could not add property to cart');
     setAdding(false);
   };
 
@@ -342,8 +342,20 @@ export default function ProductDetail() {
             </button>
           )}
 
-          {/* Wishlist */}
-          <div className="flex justify-end">
+          {/* Cart and wishlist */}
+          <div className="grid grid-cols-[1fr_auto] gap-3">
+            <button
+              onClick={handleAddToCart}
+              disabled={adding || product.stock <= 0}
+              className="btn-primary flex items-center justify-center gap-2 py-3 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {adding ? (
+                <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+              ) : (
+                <ShoppingCart className="w-4 h-4" />
+              )}
+              Add to Cart
+            </button>
             <button onClick={handleWishlist}
               className={`w-11 h-11 rounded-xl border flex items-center justify-center transition-all ${inWish ? 'bg-rose-500 border-rose-500 text-white' : 'border-gray-300 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:border-rose-300 hover:text-rose-500'}`}>
               <Heart className={`w-5 h-5 ${inWish ? 'fill-white' : ''}`} />

@@ -24,6 +24,8 @@ exports.addToCart = async (req, res) => {
     const product = await Product.findById(productId);
     if (!product || !product.isActive || product.approvalStatus !== 'approved')
       return res.status(404).json({ success: false, message: 'Product not found or not available' });
+    if (product.stock < 1)
+      return res.status(400).json({ success: false, message: 'Property is out of stock' });
 
     let cart = await Cart.findOne({ user: req.user._id });
     if (!cart) cart = await Cart.create({ user: req.user._id, items: [] });
