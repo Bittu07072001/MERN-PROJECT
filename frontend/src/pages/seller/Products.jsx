@@ -5,16 +5,21 @@ import toast from 'react-hot-toast';
 import api from '../../utils/api';
 
 export default function SellerProducts() {
+  const PAGE_SIZE = 10;
   const [products, setProducts] = useState([]);
   const [total,    setTotal]    = useState(0);
+  const [page,     setPage]     = useState(1);
+  const [pages,    setPages]    = useState(1);
   const [loading,  setLoading]  = useState(true);
 
   useEffect(() => {
-    api.get('/seller/products?limit=100').then(r => {
+    setLoading(true);
+    api.get(`/seller/products?page=${page}&limit=${PAGE_SIZE}`).then(r => {
       setProducts(r.data.products || []);
       setTotal(r.data.total ?? r.data.products?.length ?? 0);
+      setPages(r.data.pages || 1);
     }).catch(() => toast.error('Failed to load')).finally(() => setLoading(false));
-  }, []);
+  }, [page]);
 
   const handleDelete = async (id) => {
     if (!window.confirm('Remove this listing?')) return;
@@ -22,9 +27,13 @@ export default function SellerProducts() {
       await api.delete(`/products/${id}`);
       setProducts(p => p.filter(x => x._id !== id));
       setTotal(t => Math.max(0, t - 1));
+      if (products.length === 1 && page > 1) setPage(p => p - 1);
       toast.success('Listing removed');
     } catch { toast.error('Failed'); }
   };
+
+  const start = total === 0 ? 0 : (page - 1) * PAGE_SIZE + 1;
+  const end = Math.min(page * PAGE_SIZE, total);
 
   return (
     <div className="space-y-5">
@@ -89,6 +98,45 @@ export default function SellerProducts() {
             </div>
           )}
         </div>
+        {!loading && total > PAGE_SIZE && (
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-4 py-3 border-t border-gray-100 dark:border-gray-800">
+            <p className="text-sm text-gray-500 dark:text-gray-400">
+              Showing {start}-{end} of {total}
+            </p>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setPage(p => Math.max(1, p - 1))}
+                disabled={page === 1}
+                className="px-3 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 text-sm font-semibold text-gray-600 dark:text-gray-300 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+              >
+                Previous
+              </button>
+              {[...Array(pages)].map((_, i) => {
+                const pageNumber = i + 1;
+                return (
+                  <button
+                    key={pageNumber}
+                    onClick={() => setPage(pageNumber)}
+                    className={`min-w-9 px-3 py-1.5 rounded-lg text-sm font-bold transition-colors ${
+                      page === pageNumber
+                        ? 'bg-primary-600 text-white'
+                        : 'border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800'
+                    }`}
+                  >
+                    {pageNumber}
+                  </button>
+                );
+              })}
+              <button
+                onClick={() => setPage(p => Math.min(pages, p + 1))}
+                disabled={page === pages}
+                className="px-3 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 text-sm font-semibold text-gray-600 dark:text-gray-300 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+              >
+                Next
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
