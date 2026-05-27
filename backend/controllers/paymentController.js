@@ -120,7 +120,7 @@ exports.verifyRazorpayPayment = async (req, res) => {
       'paymentDetails.razorpayOrderId':   razorpay_order_id,
       'paymentDetails.razorpayPaymentId': razorpay_payment_id,
       'paymentDetails.paidAt':            new Date(),
-      orderStatus: 'confirmed',
+      orderStatus: 'booking_confirmed',
     }, { new: true }).populate('user', 'name email');
 
     const io = req.app.get('io');

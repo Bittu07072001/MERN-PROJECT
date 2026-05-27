@@ -4,6 +4,15 @@ const { protect, authorize } = require('../middleware/auth');
 const Product = require('../models/Product');
 const Order   = require('../models/Order');
 
+const STATUS_QUERY_ALIASES = {
+  inquiry_received: ['inquiry_received', 'placed'],
+  booking_confirmed: ['booking_confirmed', 'confirmed'],
+  documents_verification: ['documents_verification', 'processing'],
+  registered: ['registered', 'shipped'],
+  handover_completed: ['handover_completed', 'out_for_delivery', 'delivered'],
+  cancelled: ['cancelled', 'returned'],
+};
+
 router.use(protect, authorize('seller', 'admin'));
 
 router.get('/dashboard', async (req, res) => {
@@ -18,7 +27,7 @@ router.get('/dashboard', async (req, res) => {
       const si = o.items.filter(i => i.seller?.toString() === sellerId.toString());
       return acc + si.reduce((s, i) => s + (i.discountPrice || i.price) * i.quantity, 0);
     }, 0);
-    const pendingOrders = sellerOrders.filter(o => ['placed','confirmed','processing'].includes(o.orderStatus)).length;
+    const pendingOrders = sellerOrders.filter(o => ['inquiry_received', 'site_visit_scheduled', 'booking_confirmed', 'payment_pending', 'documents_verification', 'placed', 'confirmed', 'processing'].includes(o.orderStatus)).length;
     res.json({ success: true, stats: { totalProducts, totalOrders: sellerOrders.length, revenue, pendingOrders }, recentProducts: products });
   } catch (err) { res.status(500).json({ success: false, message: err.message }); }
 });
@@ -27,7 +36,7 @@ router.get('/orders', async (req, res) => {
   try {
     const { page = 1, limit = 20, status } = req.query;
     const query = { 'items.seller': req.user._id };
-    if (status) query.orderStatus = status;
+    if (status) query.orderStatus = { $in: STATUS_QUERY_ALIASES[status] || [status] };
     const total  = await Order.countDocuments(query);
     const orders = await Order.find(query).populate('user', 'name email').sort('-createdAt')
       .skip((page - 1) * limit).limit(Number(limit));

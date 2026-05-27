@@ -4,8 +4,9 @@ import { Package, MapPin, CreditCard, CheckCircle, XCircle, Clock, Truck } from 
 import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
 import api from '../../utils/api';
+import { ORDER_STATUSES, formatOrderStatus, normalizeOrderStatus } from '../../utils/orderStatus';
 
-const STEPS = ['placed','confirmed','processing','shipped','out_for_delivery','delivered'];
+const STEPS = ORDER_STATUSES.filter(status => status !== 'cancelled');
 const STEP_ICONS = { placed: '📋', confirmed: '✅', processing: '⚙️', shipped: '📦', out_for_delivery: '🚚', delivered: '🎉' };
 
 export default function OrderDetail() {
@@ -32,9 +33,10 @@ export default function OrderDetail() {
   if (loading) return <div className="flex justify-center py-20"><div className="w-10 h-10 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin" /></div>;
   if (!order) return null;
 
-  const currentStep = STEPS.indexOf(order.orderStatus);
-  const isCancelled = order.orderStatus === 'cancelled';
-  const canCancel   = ['placed', 'confirmed'].includes(order.orderStatus);
+  const normalizedStatus = normalizeOrderStatus(order.orderStatus);
+  const currentStep = STEPS.indexOf(normalizedStatus);
+  const isCancelled = normalizedStatus === 'cancelled';
+  const canCancel   = ['inquiry_received', 'site_visit_scheduled', 'booking_confirmed', 'payment_pending'].includes(normalizedStatus);
 
   return (
     <div className="space-y-6 max-w-3xl mx-auto">
@@ -65,10 +67,10 @@ export default function OrderDetail() {
                 return (
                   <div key={step} className="flex flex-col items-center gap-2 flex-1">
                     <div className={`w-10 h-10 rounded-full flex items-center justify-center text-lg border-2 transition-all z-10 ${done ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-950' : 'border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900'}`}>
-                      {STEP_ICONS[step]}
+                      {STEP_ICONS[step] || i + 1}
                     </div>
                     <span className={`text-xs text-center capitalize leading-tight ${done ? 'font-semibold text-indigo-600 dark:text-indigo-400' : 'text-gray-400 dark:text-gray-500'}`}>
-                      {step.replace(/_/g, ' ')}
+                      {formatOrderStatus(step)}
                     </span>
                   </div>
                 );

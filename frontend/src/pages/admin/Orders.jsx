@@ -2,14 +2,7 @@ import { useState, useEffect } from 'react';
 import { Search, ChevronDown, Package } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../../utils/api';
-
-const STATUSES = ['placed','confirmed','processing','shipped','out_for_delivery','delivered','cancelled'];
-const STATUS_COLORS = {
-  placed: 'bg-blue-100 text-blue-700', confirmed: 'bg-indigo-100 text-indigo-700',
-  processing: 'bg-yellow-100 text-yellow-700', shipped: 'bg-orange-100 text-orange-700',
-  out_for_delivery: 'bg-amber-100 text-amber-700', delivered: 'bg-green-100 text-green-700',
-  cancelled: 'bg-red-100 text-red-700',
-};
+import { ORDER_STATUSES, formatOrderStatus, getOrderStatusColor, normalizeOrderStatus } from '../../utils/orderStatus';
 
 export default function AdminOrders() {
   const [orders,  setOrders]  = useState([]);
@@ -52,7 +45,7 @@ export default function AdminOrders() {
           </div>
           <select value={status} onChange={e => setStatus(e.target.value)} className="input text-sm py-2 w-auto">
             <option value="">All Status</option>
-            {STATUSES.map(s => <option key={s} value={s}>{s.replace(/_/g, ' ')}</option>)}
+            {ORDER_STATUSES.map(s => <option key={s} value={s}>{formatOrderStatus(s)}</option>)}
           </select>
         </div>
       </div>
@@ -82,18 +75,18 @@ export default function AdminOrders() {
                     </span>
                   </td>
                   <td className="px-4 py-3">
-                    <span className={`badge text-xs capitalize ${STATUS_COLORS[o.orderStatus] || ''}`}>
-                      {o.orderStatus?.replace(/_/g, ' ')}
+                    <span className={`badge text-xs capitalize ${getOrderStatusColor(o.orderStatus)}`}>
+                      {formatOrderStatus(o.orderStatus)}
                     </span>
                   </td>
                   <td className="px-4 py-3 text-gray-500 dark:text-gray-400">{new Date(o.createdAt).toLocaleDateString('en-IN')}</td>
                   <td className="px-4 py-3">
                     <select
-                      value={o.orderStatus}
+                      value={normalizeOrderStatus(o.orderStatus)}
                       onChange={e => handleStatusUpdate(o._id, e.target.value)}
-                      disabled={updating === o._id || o.orderStatus === 'delivered' || o.orderStatus === 'cancelled'}
+                      disabled={updating === o._id || normalizeOrderStatus(o.orderStatus) === 'handover_completed' || normalizeOrderStatus(o.orderStatus) === 'cancelled'}
                       className="text-xs border border-gray-200 dark:border-gray-700 rounded-lg px-2 py-1 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 outline-none focus:ring-1 focus:ring-indigo-500 disabled:opacity-40 cursor-pointer">
-                      {STATUSES.map(s => <option key={s} value={s}>{s.replace(/_/g, ' ')}</option>)}
+                      {ORDER_STATUSES.map(s => <option key={s} value={s}>{formatOrderStatus(s)}</option>)}
                     </select>
                   </td>
                 </tr>

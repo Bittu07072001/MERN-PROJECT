@@ -5,15 +5,10 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import api from '../../utils/api';
 import { useAdminLiveStore } from '../../context/stores';
+import { formatOrderStatus, getOrderStatusColor } from '../../utils/orderStatus';
 
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 const PIE_COLORS = ['#6366f1','#8b5cf6','#ec4899','#f59e0b','#10b981','#3b82f6'];
-const STATUS_COLORS = {
-  placed: 'bg-blue-100 text-blue-700', confirmed: 'bg-indigo-100 text-indigo-700',
-  processing: 'bg-yellow-100 text-yellow-700', shipped: 'bg-orange-100 text-orange-700',
-  delivered: 'bg-green-100 text-green-700', cancelled: 'bg-red-100 text-red-700',
-};
-
 const StatCard = ({ icon, label, value, sub, color }) => (
   <div className="card p-5 flex items-start gap-4">
     <div className={`w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0 ${color}`}>{icon}</div>
@@ -313,7 +308,7 @@ export default function AdminDashboard() {
                   </div>
                   <div className="text-right flex-shrink-0">
                     <p className="text-sm font-bold text-gray-900 dark:text-white">₹{o.total?.toLocaleString()}</p>
-                    <span className={`badge text-xs capitalize ${STATUS_COLORS[o.orderStatus] || 'bg-gray-100 text-gray-600'}`}>{o.orderStatus}</span>
+                    <span className={`badge text-xs capitalize ${getOrderStatusColor(o.orderStatus)}`}>{formatOrderStatus(o.orderStatus)}</span>
                   </div>
                 </div>
               ))}

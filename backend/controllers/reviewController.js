@@ -13,7 +13,7 @@ exports.createReview = async (req, res) => {
     if (orderId) {
       const order = await Order.findOne({
         _id: orderId, user: req.user._id,
-        'items.product': productId, orderStatus: 'delivered',
+        'items.product': productId, orderStatus: 'handover_completed',
       });
       isVerified = !!order;
     }

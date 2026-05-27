@@ -7,6 +7,6 @@ router.post('/',           protect, ctrl.createOrder);
 router.get('/my',          protect, ctrl.getMyOrders);
 router.get('/:id',         protect, ctrl.getOrder);
 router.put('/:id/cancel',  protect, ctrl.cancelOrder);
-router.put('/:id/status',  protect, authorize('admin','seller'), ctrl.updateOrderStatus);
+router.put('/:id/status',  protect, authorize('admin'), ctrl.updateOrderStatus);
 
 module.exports = router;

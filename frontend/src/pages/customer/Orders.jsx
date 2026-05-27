@@ -3,17 +3,7 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Package, ChevronRight, X } from 'lucide-react';
 import api from '../../utils/api';
-
-const STATUS_COLORS = {
-  placed: 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300',
-  confirmed: 'bg-indigo-100 text-indigo-700',
-  processing: 'bg-yellow-100 text-yellow-700',
-  shipped: 'bg-orange-100 text-orange-700',
-  out_for_delivery: 'bg-amber-100 text-amber-700',
-  delivered: 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300',
-  cancelled: 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300',
-  returned: 'bg-gray-100 text-gray-700',
-};
+import { ORDER_STATUSES, formatOrderStatus, getOrderStatusColor } from '../../utils/orderStatus';
 
 export default function Orders() {
   const [orders,  setOrders]  = useState([]);
@@ -46,7 +36,7 @@ export default function Orders() {
         <h1 className="text-2xl font-black text-gray-900 dark:text-white">My Orders</h1>
         <select value={status} onChange={e => setStatus(e.target.value)} className="input text-sm py-2 w-auto">
           <option value="">All Orders</option>
-          {Object.keys(STATUS_COLORS).map(s => <option key={s} value={s}>{s.replace(/_/g, ' ')}</option>)}
+          {ORDER_STATUSES.map(s => <option key={s} value={s}>{formatOrderStatus(s)}</option>)}
         </select>
       </div>
       {loading ? (
@@ -59,8 +49,8 @@ export default function Orders() {
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
               <span className="font-bold text-sm text-gray-900 dark:text-white">{order.orderNumber}</span>
-              <span className={`badge text-xs capitalize ${STATUS_COLORS[order.orderStatus] || 'bg-gray-100 text-gray-700'}`}>
-                {order.orderStatus?.replace(/_/g, ' ')}
+              <span className={`badge text-xs capitalize ${getOrderStatusColor(order.orderStatus)}`}>
+                {formatOrderStatus(order.orderStatus)}
               </span>
             </div>
             <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">

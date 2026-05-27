@@ -2,6 +2,16 @@ const Order   = require('../models/Order');
 const Product = require('../models/Product');
 const { Cart, Notification, Coupon } = require('../models/index');
 
+const ORDER_STATUSES = ['inquiry_received', 'site_visit_scheduled', 'booking_confirmed', 'payment_pending', 'documents_verification', 'registered', 'handover_completed', 'cancelled'];
+const STATUS_QUERY_ALIASES = {
+  inquiry_received: ['inquiry_received', 'placed'],
+  booking_confirmed: ['booking_confirmed', 'confirmed'],
+  documents_verification: ['documents_verification', 'processing'],
+  registered: ['registered', 'shipped'],
+  handover_completed: ['handover_completed', 'out_for_delivery', 'delivered'],
+  cancelled: ['cancelled', 'returned'],
+};
+
 const notify = async (userId, data, io) => {
   const notif = await Notification.create({ user: userId, ...data });
   if (io) io.to(`user_${userId}`).emit('notification', notif);
@@ -60,7 +70,7 @@ exports.createOrder = async (req, res) => {
       paymentMethod, paymentPlan: paymentMethod === 'razorpay' && paymentPlan === 'emi' ? 'emi' : 'full',
       subtotal, shippingCost, discount,
       couponCode: couponCode?.toUpperCase(), total, notes,
-      statusHistory: [{ status: 'placed', message: 'Order placed successfully', updatedBy: req.user._id }],
+      statusHistory: [{ status: 'inquiry_received', message: 'Inquiry received successfully', updatedBy: req.user._id }],
     });
 
     // Reduce stock
@@ -96,7 +106,7 @@ exports.getMyOrders = async (req, res) => {
   try {
     const { page = 1, limit = 10, status } = req.query;
     const query = { user: req.user._id };
-    if (status) query.orderStatus = status;
+    if (status) query.orderStatus = { $in: STATUS_QUERY_ALIASES[status] || [status] };
 
     const total  = await Order.countDocuments(query);
     const orders = await Order.find(query)
@@ -127,7 +137,7 @@ exports.cancelOrder = async (req, res) => {
   try {
     const order = await Order.findOne({ _id: req.params.id, user: req.user._id });
     if (!order) return res.status(404).json({ success: false, message: 'Order not found' });
-    if (!['placed', 'confirmed'].includes(order.orderStatus))
+    if (!['inquiry_received', 'site_visit_scheduled', 'booking_confirmed', 'payment_pending', 'placed', 'confirmed'].includes(order.orderStatus))
       return res.status(400).json({ success: false, message: 'Order cannot be cancelled at this stage' });
 
     order.orderStatus = 'cancelled';
@@ -154,6 +164,9 @@ exports.cancelOrder = async (req, res) => {
 exports.updateOrderStatus = async (req, res) => {
   try {
     const { status, message, trackingNumber, courier, estimatedDelivery } = req.body;
+    if (!ORDER_STATUSES.includes(status)) {
+      return res.status(400).json({ success: false, message: 'Invalid order status' });
+    }
     const order = await Order.findById(req.params.id);
     if (!order) return res.status(404).json({ success: false, message: 'Order not found' });
 
@@ -162,7 +175,7 @@ exports.updateOrderStatus = async (req, res) => {
     if (trackingNumber) order.trackingNumber = trackingNumber;
     if (courier)        order.courier        = courier;
     if (estimatedDelivery) order.estimatedDelivery = estimatedDelivery;
-    if (status === 'delivered' && order.paymentMethod === 'cod') order.paymentStatus = 'paid';
+    if (status === 'handover_completed' && order.paymentMethod === 'cod') order.paymentStatus = 'paid';
     await order.save();
 
     const io = req.app.get('io');

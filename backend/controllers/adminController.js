@@ -7,6 +7,14 @@ const AILog   = require('../models/AILog');
 
 const MAIN_ADMIN_NAME = 'project2.0';
 const MAIN_ADMIN_EMAIL = 'projectchandra420@gmail.com';
+const STATUS_QUERY_ALIASES = {
+  inquiry_received: ['inquiry_received', 'placed'],
+  booking_confirmed: ['booking_confirmed', 'confirmed'],
+  documents_verification: ['documents_verification', 'processing'],
+  registered: ['registered', 'shipped'],
+  handover_completed: ['handover_completed', 'out_for_delivery', 'delivered'],
+  cancelled: ['cancelled', 'returned'],
+};
 
 const isMainAdmin = (user) => (
   user?.role === 'admin' &&
@@ -24,7 +32,7 @@ exports.getDashboard = async (req, res) => {
         User.countDocuments({ role: 'seller', isActive: true, isOnline: true }),
         Product.countDocuments({ isActive: true }),
         Order.countDocuments(),
-        Order.countDocuments({ orderStatus: 'placed' }),
+        Order.countDocuments({ orderStatus: { $in: STATUS_QUERY_ALIASES.inquiry_received } }),
         Order.aggregate([{ $match: { paymentStatus: 'paid' } }, { $group: { _id: null, total: { $sum: '$total' } } }]),
         Order.find().sort('-createdAt').limit(5).populate('user', 'name email').populate('items.product', 'name'),
         Product.find().sort('-soldCount').limit(5).select('name soldCount price images'),
@@ -335,7 +343,7 @@ exports.getAllOrders = async (req, res) => {
   try {
     const { page = 1, limit = 20, status, search } = req.query;
     const query = {};
-    if (status) query.orderStatus = status;
+    if (status) query.orderStatus = { $in: STATUS_QUERY_ALIASES[status] || [status] };
     if (search) query.orderNumber = new RegExp(search, 'i');
 
     const total  = await Order.countDocuments(query);
@@ -392,7 +400,7 @@ exports.getLiveCounts = async (req, res) => {
   try {
     const [pendingBookings, pendingOrders, pendingProperties] = await Promise.all([
       Booking.countDocuments({ status: 'pending' }),
-      Order.countDocuments({ orderStatus: 'placed' }),
+      Order.countDocuments({ orderStatus: { $in: STATUS_QUERY_ALIASES.inquiry_received } }),
       Product.countDocuments({ approvalStatus: 'pending' }),
     ]);
     res.json({ success: true, pendingBookings, pendingOrders, pendingProperties });

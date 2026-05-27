@@ -32,8 +32,8 @@ const orderSchema = new mongoose.Schema({
   },
   orderStatus: {
     type: String,
-    enum: ['placed', 'confirmed', 'processing', 'shipped', 'out_for_delivery', 'delivered', 'cancelled', 'returned'],
-    default: 'placed',
+    enum: ['inquiry_received', 'site_visit_scheduled', 'booking_confirmed', 'payment_pending', 'documents_verification', 'registered', 'handover_completed', 'cancelled'],
+    default: 'inquiry_received',
   },
   statusHistory: [{
     status:    String,
