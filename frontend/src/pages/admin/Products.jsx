@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Search, Eye, Trash2, CheckCircle, XCircle, Plus, Pencil, X, Save, Filter } from 'lucide-react';
+import { Search, Eye, Trash2, CheckCircle, XCircle, Pencil, X, Save, Filter } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
@@ -17,7 +17,11 @@ const EMPTY_FORM = {
 };
 
 export default function AdminProducts() {
+  const PAGE_SIZE = 10;
   const [products, setProducts]     = useState([]);
+  const [total, setTotal]           = useState(0);
+  const [page, setPage]             = useState(1);
+  const [pages, setPages]           = useState(1);
   const [search, setSearch]         = useState('');
   const [filterStatus, setFilter]   = useState('');
   const [loading, setLoading]       = useState(true);
@@ -32,11 +36,13 @@ export default function AdminProducts() {
   const fetchProducts = async () => {
     setLoading(true);
     try {
-      const p = new URLSearchParams({ limit: '100' });
+      const p = new URLSearchParams({ page: String(page), limit: String(PAGE_SIZE) });
       if (search)       p.set('search', search);
       if (filterStatus) p.set('approvalStatus', filterStatus);
       const { data } = await api.get(`/admin/products?${p}`);
       setProducts(data.products || []);
+      setTotal(data.total ?? data.products?.length ?? 0);
+      setPages(Math.max(1, Math.ceil((data.total ?? 0) / PAGE_SIZE)));
     } catch {} finally { setLoading(false); }
   };
 
@@ -47,7 +53,8 @@ export default function AdminProducts() {
     } catch {}
   };
 
-  useEffect(() => { fetchProducts(); }, [search, filterStatus]);
+  useEffect(() => { setPage(1); }, [search, filterStatus]);
+  useEffect(() => { fetchProducts(); }, [search, filterStatus, page]);
   useEffect(() => { fetchSellers(); }, []);
 
   const handleApprove = async (id) => {
@@ -73,12 +80,13 @@ export default function AdminProducts() {
     try {
       await api.delete(`/admin/products/${deleteId}`);
       setProducts(p => p.filter(x => x._id !== deleteId));
+      setTotal(t => Math.max(0, t - 1));
+      if (products.length === 1 && page > 1) setPage(p => p - 1);
       toast.success('Property deleted');
       setDeleteId(null);
     } catch { toast.error('Failed to delete'); }
   };
 
-  const openAdd  = () => { setForm(EMPTY_FORM); setModal('add'); };
   const openEdit = (p) => {
     setForm({
       name: p.name, description: p.description, price: p.price,
@@ -94,15 +102,9 @@ export default function AdminProducts() {
       return toast.error('Please fill all required fields');
     setSaving(true);
     try {
-      if (modal === 'add') {
-        const { data } = await api.post('/admin/products', { ...form, price: Number(form.price), stock: Number(form.stock), discountPrice: Number(form.discountPrice) || 0 });
-        setProducts(p => [data.product, ...p]);
-        toast.success('Property added');
-      } else {
-        const { data } = await api.put(`/admin/products/${modal}`, { ...form, price: Number(form.price), stock: Number(form.stock), discountPrice: Number(form.discountPrice) || 0 });
-        setProducts(p => p.map(x => x._id === modal ? data.product : x));
-        toast.success('Property updated');
-      }
+      const { data } = await api.put(`/admin/products/${modal}`, { ...form, price: Number(form.price), stock: Number(form.stock), discountPrice: Number(form.discountPrice) || 0 });
+      setProducts(p => p.map(x => x._id === modal ? data.product : x));
+      toast.success('Property updated');
       closeModal();
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed');
@@ -110,12 +112,14 @@ export default function AdminProducts() {
   };
 
   const pendingCount = products.filter(p => p.approvalStatus === 'pending').length;
+  const start = total === 0 ? 0 : (page - 1) * PAGE_SIZE + 1;
+  const end = Math.min(page * PAGE_SIZE, total);
 
   return (
     <div className="space-y-5">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-black text-gray-900 dark:text-white">Properties ({products.length})</h1>
+          <h1 className="text-2xl font-black text-gray-900 dark:text-white">Properties ({total})</h1>
           {pendingCount > 0 && (
             <p className="text-sm text-amber-600 dark:text-amber-400 mt-0.5 font-medium">
               {pendingCount} propert{pendingCount !== 1 ? 'ies' : 'y'} awaiting approval
@@ -136,9 +140,6 @@ export default function AdminProducts() {
               <option value="rejected">Rejected</option>
             </select>
           </div>
-          <button onClick={openAdd} className="btn-primary flex items-center gap-2 text-sm py-2 px-4">
-            <Plus className="w-4 h-4" /> Add Property
-          </button>
         </div>
       </div>
 
@@ -221,9 +222,48 @@ export default function AdminProducts() {
             <div className="text-center py-12 text-gray-400 text-sm">No properties found</div>
           )}
         </div>
+        {!loading && total > PAGE_SIZE && (
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-4 py-3 border-t border-gray-100 dark:border-gray-800">
+            <p className="text-sm text-gray-500 dark:text-gray-400">
+              Showing {start}-{end} of {total}
+            </p>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setPage(p => Math.max(1, p - 1))}
+                disabled={page === 1}
+                className="px-3 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 text-sm font-semibold text-gray-600 dark:text-gray-300 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+              >
+                Previous
+              </button>
+              {[...Array(pages)].map((_, i) => {
+                const pageNumber = i + 1;
+                return (
+                  <button
+                    key={pageNumber}
+                    onClick={() => setPage(pageNumber)}
+                    className={`min-w-9 px-3 py-1.5 rounded-lg text-sm font-bold transition-colors ${
+                      page === pageNumber
+                        ? 'bg-primary-600 text-white'
+                        : 'border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800'
+                    }`}
+                  >
+                    {pageNumber}
+                  </button>
+                );
+              })}
+              <button
+                onClick={() => setPage(p => Math.min(pages, p + 1))}
+                disabled={page === pages}
+                className="px-3 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 text-sm font-semibold text-gray-600 dark:text-gray-300 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+              >
+                Next
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
-      {/* Add/Edit Property Modal */}
+      {/* Edit Property Modal */}
       <AnimatePresence>
         {modal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -234,7 +274,7 @@ export default function AdminProducts() {
               className="relative bg-white dark:bg-gray-900 rounded-2xl shadow-2xl p-6 w-full max-w-lg z-10 max-h-[90vh] overflow-y-auto">
               <div className="flex items-center justify-between mb-5">
                 <h3 className="text-lg font-black text-gray-900 dark:text-white">
-                  {modal === 'add' ? 'Add New Property' : 'Edit Property'}
+                  Edit Property
                 </h3>
                 <button onClick={closeModal} className="p-1.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 rounded-lg">
                   <X className="w-5 h-5" />
@@ -297,7 +337,7 @@ export default function AdminProducts() {
                 <button onClick={closeModal} className="flex-1 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 text-sm font-semibold text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">Cancel</button>
                 <button onClick={handleSave} disabled={saving} className="flex-1 btn-primary py-2.5 text-sm flex items-center justify-center gap-2">
                   {saving ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                    : <><Save className="w-4 h-4" />{modal === 'add' ? 'Add Property' : 'Save Changes'}</>}
+                    : <><Save className="w-4 h-4" />Save Changes</>}
                 </button>
               </div>
             </motion.div>

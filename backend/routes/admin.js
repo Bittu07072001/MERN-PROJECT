@@ -19,7 +19,6 @@ router.put('/sellers/:sellerId',                  ctrl.updateSeller);
 router.delete('/sellers/:sellerId',               ctrl.removeSeller);
 
 router.get('/products',                           ctrl.getAllProducts);
-router.post('/products',                          ctrl.adminAddProperty);
 router.put('/products/:id',                       ctrl.adminUpdateProperty);
 router.delete('/products/:id',                    ctrl.adminDeleteProperty);
 router.put('/products/:id/approve',               ctrl.approveProperty);
