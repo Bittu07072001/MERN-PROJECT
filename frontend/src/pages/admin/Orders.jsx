@@ -4,25 +4,30 @@ import toast from 'react-hot-toast';
 import api from '../../utils/api';
 import { ORDER_STATUSES, formatOrderStatus, getOrderStatusColor, normalizeOrderStatus } from '../../utils/orderStatus';
 
+const PAGE_SIZE = 5;
+
 export default function AdminOrders() {
   const [orders,  setOrders]  = useState([]);
   const [search,  setSearch]  = useState('');
   const [status,  setStatus]  = useState('');
+  const [page,    setPage]    = useState(1);
+  const [total,   setTotal]   = useState(0);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(null);
 
   const fetchOrders = async () => {
     setLoading(true);
     try {
-      const p = new URLSearchParams({ limit: '50' });
+      const p = new URLSearchParams({ page: String(page), limit: String(PAGE_SIZE) });
       if (search) p.set('search', search);
       if (status) p.set('status', status);
       const { data } = await api.get(`/admin/orders?${p}`);
       setOrders(data.orders);
+      setTotal(data.total || 0);
     } catch {} finally { setLoading(false); }
   };
 
-  useEffect(() => { fetchOrders(); }, [search, status]);
+  useEffect(() => { fetchOrders(); }, [search, status, page]);
 
   const handleStatusUpdate = async (orderId, newStatus) => {
     setUpdating(orderId);
@@ -34,16 +39,20 @@ export default function AdminOrders() {
     finally { setUpdating(null); }
   };
 
+  const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const start = total === 0 ? 0 : (page - 1) * PAGE_SIZE + 1;
+  const end = Math.min(page * PAGE_SIZE, total);
+
   return (
     <div className="space-y-5">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <h1 className="text-2xl font-black text-gray-900 dark:text-white">Orders ({orders.length})</h1>
+        <h1 className="text-2xl font-black text-gray-900 dark:text-white">Orders ({total})</h1>
         <div className="flex gap-2">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-            <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search order #…" className="input text-sm pl-9 py-2" />
+            <input value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} placeholder="Search order #…" className="input text-sm pl-9 py-2" />
           </div>
-          <select value={status} onChange={e => setStatus(e.target.value)} className="input text-sm py-2 w-auto">
+          <select value={status} onChange={e => { setStatus(e.target.value); setPage(1); }} className="input text-sm py-2 w-auto">
             <option value="">All Status</option>
             {ORDER_STATUSES.map(s => <option key={s} value={s}>{formatOrderStatus(s)}</option>)}
           </select>
@@ -95,6 +104,45 @@ export default function AdminOrders() {
           </table>
           {!loading && orders.length === 0 && <div className="text-center py-12 text-gray-400 text-sm">No orders found</div>}
         </div>
+        {!loading && total > PAGE_SIZE && (
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-4 py-3 border-t border-gray-100 dark:border-gray-800">
+            <p className="text-sm text-gray-500 dark:text-gray-400">
+              Showing {start}-{end} of {total}
+            </p>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setPage(p => Math.max(1, p - 1))}
+                disabled={page === 1}
+                className="px-3 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 text-sm font-semibold text-gray-600 dark:text-gray-300 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+              >
+                Previous
+              </button>
+              {[...Array(pages)].map((_, i) => {
+                const pageNumber = i + 1;
+                return (
+                  <button
+                    key={pageNumber}
+                    onClick={() => setPage(pageNumber)}
+                    className={`min-w-9 px-3 py-1.5 rounded-lg text-sm font-bold transition-colors ${
+                      page === pageNumber
+                        ? 'bg-primary-600 text-white'
+                        : 'border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800'
+                    }`}
+                  >
+                    {pageNumber}
+                  </button>
+                );
+              })}
+              <button
+                onClick={() => setPage(p => Math.min(pages, p + 1))}
+                disabled={page === pages}
+                className="px-3 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 text-sm font-semibold text-gray-600 dark:text-gray-300 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+              >
+                Next
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
