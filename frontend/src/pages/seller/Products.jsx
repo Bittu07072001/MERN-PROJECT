@@ -6,10 +6,14 @@ import api from '../../utils/api';
 
 export default function SellerProducts() {
   const [products, setProducts] = useState([]);
+  const [total,    setTotal]    = useState(0);
   const [loading,  setLoading]  = useState(true);
 
   useEffect(() => {
-    api.get('/seller/products').then(r => setProducts(r.data.products)).catch(() => toast.error('Failed to load')).finally(() => setLoading(false));
+    api.get('/seller/products?limit=100').then(r => {
+      setProducts(r.data.products || []);
+      setTotal(r.data.total ?? r.data.products?.length ?? 0);
+    }).catch(() => toast.error('Failed to load')).finally(() => setLoading(false));
   }, []);
 
   const handleDelete = async (id) => {
@@ -17,6 +21,7 @@ export default function SellerProducts() {
     try {
       await api.delete(`/products/${id}`);
       setProducts(p => p.filter(x => x._id !== id));
+      setTotal(t => Math.max(0, t - 1));
       toast.success('Listing removed');
     } catch { toast.error('Failed'); }
   };
@@ -24,7 +29,7 @@ export default function SellerProducts() {
   return (
     <div className="space-y-5">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-black text-gray-900 dark:text-white">My Listings ({products.length})</h1>
+        <h1 className="text-2xl font-black text-gray-900 dark:text-white">My Listings ({total})</h1>
         <Link to="/seller/products/add" className="btn-primary text-sm flex items-center gap-2"><Plus className="w-4 h-4" /> List Property</Link>
       </div>
       <div className="card overflow-hidden">
@@ -39,7 +44,7 @@ export default function SellerProducts() {
             </thead>
             <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
               {loading ? [...Array(4)].map((_, i) => (
-                <tr key={i}><td colSpan={7} className="px-4 py-3"><div className="h-4 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" /></td></tr>
+                <tr key={i}><td colSpan={8} className="px-4 py-3"><div className="h-4 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" /></td></tr>
               )) : products.map(p => (
                 <tr key={p._id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
                   <td className="px-4 py-3">

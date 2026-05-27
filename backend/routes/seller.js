@@ -37,11 +37,11 @@ router.get('/orders', async (req, res) => {
 
 router.get('/products', async (req, res) => {
   try {
-    const { page = 1, limit = 20 } = req.query;
+    const { page = 1, limit = 100 } = req.query;
     const total    = await Product.countDocuments({ seller: req.user._id });
     const products = await Product.find({ seller: req.user._id }).sort('-createdAt')
       .skip((page - 1) * limit).limit(Number(limit));
-    res.json({ success: true, products, total });
+    res.json({ success: true, products, total, page: Number(page), pages: Math.ceil(total / limit) });
   } catch (err) { res.status(500).json({ success: false, message: err.message }); }
 });
 
